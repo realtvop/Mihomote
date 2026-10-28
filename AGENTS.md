@@ -25,22 +25,76 @@
 最后更新：2026-10-29
 
 ### 已完成
-- [x] Flutter 项目脚手架（6 个平台），依赖选型完成（见第 3 节）
+- [x] Flutter 项目脚手架（6 个平台）、依赖选型（第 3 节）、各平台网络权限配置（§3.4）
 - [x] AGENTS.md / CLAUDE.md
+- [x] **M0 基础设施**
+  - 主题：`lib/app/app.dart`，由 `MaterialApp.router` 加 `M3ETheme` 组成；动态取色加种子色兜底；主题模式支持跟随系统、浅色、深色
+  - 路由与自适应导航：`lib/app/router.dart`、`lib/app/shell/`
+    - 导航形态：底栏 / 收起的 Rail / 展开的 Rail
+    - 窄屏下设置页全屏显示，带返回按钮
+    - Android 返回键：非概览页先回到概览，概览页再退出
+  - 中英文案：`lib/l10n/`
+  - API 层：`lib/core/mihomo/`，包括 `MihomoApi` 接口、`MihomoClient`、`MockMihomoApi` 和各模型
+  - 后端管理：`lib/core/backends/`、`lib/features/backends/`
+    - 欢迎页
+    - 添加 / 编辑 / 删除 / 切换后端
+    - 连接测试
+  - 测试：
+    - 模型解析、地址规范化、策略组排序
+    - 架构规则测试 `test/architecture_test.dart`：自动拦截 §3.1 / §3.3 禁止的 import，并检查 `core/mihomo` 不依赖 UI 层
+    - 页面冒烟测试 `test/app/pages_smoke_test.dart`：用 mock 后端，在窄屏（402×874）和宽屏（1280×820）下渲染所有页面，有任何异常即失败
+- [x] **M1 核心页面**
+  - 概览：实时速率曲线、累计流量、内存、连接数、模式切换按钮组、快捷操作
+  - 代理：
+    - 策略组卡片（按组类型使用不同的 MaterialShape），折叠时显示每个成员的延迟色点
+    - 节点网格，点击即选择
+    - 组测速；单节点测速通过长按或右键触发
+- [x] **M2 基础版**
+  - 连接：实时列表、搜索、单连接速率、详情（自适应 bottom sheet / side sheet）、断开 / 全部断开、暂停
+  - 规则：规则列表加搜索；规则集列表，可更新
+  - 日志：实时流、等级筛选、暂停、清空、搜索
+- [x] **M3 部分**：设置页
+  - 后端管理
+  - 主题模式、动态取色、种子色、语言
+  - allow-lan、IPv6、日志等级（菜单形式）
+  - 关于
+- [x] **验证**（mock 数据）：
+  - Web（Debug，DDC）：窄屏和宽屏
+  - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单
+  - 编译通过：`flutter build macos --debug`、`flutter build web --wasm`
+  - `flutter test`：36 个测试全部通过
 
-### 进行中
-- [ ] M0 基础设施：主题（M3E + 动态取色）、路由与自适应导航骨架、l10n、Mihomo API 客户端、mock 数据、后端配置管理
+### 进行中 / 下一步
+- [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
+- [ ] 在 Android、Windows、Linux、macOS 上实际运行检查（目前实际运行过的只有 iOS 模拟器和 Web；macOS 只验证了编译）
+- [ ] iOS 上 emoji 显示为方块（见已知问题）
+- [ ] 连接页：排序选项
+- [ ] 规则启停（`PATCH /rules/disable`）
+- [ ] 代理集（Provider）管理页面
+- [ ] 内核操作：重启、升级
+- [ ] M4 打磨：宽屏列表-详情双栏、键盘快捷键、右键菜单
 
 ### 路线图
-- **M0 基础设施**（见上）
-- **M1 核心页面：** 概览（实时速率图、流量、内存、连接数、模式切换）、代理（策略组、选择节点、测延迟）
-- **M2 观测页面：** 连接（实时列表、搜索、排序、详情、断开）、日志（实时流、等级筛选、暂停）、规则（列表、搜索、规则集更新）
-- **M3 设置：** 后端管理、外观（主题模式 / 动态取色 / 种子色）、语言、内核配置（allow-lan、log-level、ipv6、端口、TUN 等）、内核操作（重载配置、更新 GEO、重启、升级）
 - **M4 打磨：** 代理集（Provider）管理、键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
 - **M5 发布：** 图标与启动屏、各平台打包、CI（analyze / test / `build web --wasm`）
 
 ### 已知问题 / 技术债
-- secret 目前计划以明文存于 SharedPreferences（Web 上即 localStorage）。之后评估 `flutter_secure_storage`，需要注意 macOS 钥匙串 entitlement 以及 Web/WASM 的兼容性。
+- secret 以明文存在 SharedPreferences 里（Web 上就是 localStorage）。之后评估 `flutter_secure_storage`，需要注意 macOS 钥匙串 entitlement 以及 Web/WASM 的兼容性。
+- `M3EMaterialApp` 不支持 Router，`lib/app/app.dart` 里复刻了它的行为（§3.2）。升级 `material_3_expressive` 时要对照检查。
+- `M3EResolvedTheme` 读取父级 Theme 时没有建立依赖，主题过渡动画期间不会重建，结果会出现深色卡片配浅色背景的情况。因此 `themeAnimationDuration` 设为 0，主题即时切换。上游修复后可以恢复过渡动画。
+- `M3EAppBar` 的 `actions` 是在**宽度不受限**的 Row 中布局的。放进 actions 的组件不能用 `Expanded`，也不能依赖 `maxWidth`（`BackendSwitcher` 已经处理了这种情况）。
+- iOS 26.3 模拟器上，Flutter 的系统字体回落失效，中文和 emoji 都显示成方块。
+  - 中文：已在 `lib/app/theme/fonts.dart` 显式指定 `fontFamilyFallback`（苹方等）解决。
+  - emoji：按名称指定 `Apple Color Emoji` 也无效，目前仍显示方块。待真机确认，或升级 Flutter 后复测。
+  - Web 不受影响。
+- M3E 组件的布局约束（违反时会触发布局断言，导致整页空白；新增页面要靠冒烟测试兜底）：
+  - 外层不能用 `IntrinsicHeight` 包住 `M3EButtonGroup` 等内部使用 `LayoutBuilder` 的组件。
+  - `M3ESegmentedButton` 必须拿到有界宽度，不能放进横向滚动视图。
+- Riverpod：Notifier 的 `build()` 里调用 `ref.listen(..., fireImmediately: true)` 时，回调不能读 `state`，因为此时 build 还没返回。需要初始值时，在 build 里用 `ref.read` 计算出来再返回。
+- `flutter run -d web-server --wasm` 在 Debug 模式下加载不了（请求 `main.dart.mjs` 时返回 404）。处理方式：
+  - 调试 WASM：用 `flutter run -d chrome --wasm`
+  - 预览：用非 wasm 的 web-server
+  - 验证 WASM：用 `flutter build web --wasm`
 
 ---
 
@@ -59,6 +113,8 @@
 | WebSocket | `web_socket_channel` | traffic / memory / logs / connections |
 | 本地存储 | `shared_preferences`（`SharedPreferencesWithCache`） | 后端配置、应用设置 |
 | 国际化 | `flutter_localizations` + gen-l10n + `intl` | 生成代码提交到 `lib/l10n/gen/` |
+| 图标 | Material Icons（`uses-material-design`）+ `cupertino_icons` | 后者被依赖间接引用，缺了会导致图标缺失 |
+| 测试 | `flutter_test`、`shared_preferences_platform_interface`（dev） | 冒烟测试中使用内存版 SharedPreferences |
 
 新增依赖前必须确认：① 支持全部 6 个平台；② **兼容 WASM**（pub.dev 上有 “WASM ready” 标记，或已确认不依赖 `dart:html` / `dart:io`）；③ 不和 `material_ui` 冲突（不能间接要求 app 使用 `flutter/material.dart` 的类型）。加完依赖后同步更新上表。
 
@@ -100,14 +156,16 @@ lib/
 ├── main.dart                 # 入口：初始化 SharedPreferences，挂载 ProviderScope
 ├── app/                      # 应用级装配
 │   ├── app.dart              # MaterialApp.router + M3ETheme（替代 M3EMaterialApp）
-│   ├── router.dart           # go_router 配置与路由路径常量
-│   ├── shell/                # 自适应导航骨架（NavigationBar / NavigationRail）
-│   └── theme/                # 种子色预设、语义色（延迟好/中/差等）
+│   ├── router.dart           # go_router 配置、路由路径常量、ShellBranch 索引
+│   ├── shell/                # adaptive_shell（底栏 / Rail）、page_scaffold（页面骨架 + M3E 折叠大标题栏）、
+│   │                         # backend_switcher（后端切换器）、shell_scope（页面获取 shell 信息）
+│   └── theme/                # 种子色预设与动态取色支持判断、语义色（延迟好/中/差、上下行）
 ├── core/                     # 与具体页面无关的基础能力
 │   ├── mihomo/               # Mihomo API 层：MihomoApi 接口、REST/WebSocket 实现、模型、异常（不依赖 Flutter UI）
 │   │   └── mock/             # MockMihomoApi：开发用 mock 数据与模拟实时流
 │   ├── backends/             # 后端配置模型、持久化、当前后端与 MihomoClient 的 provider
 │   ├── settings/             # 应用设置（主题模式、动态取色、种子色、语言）
+│   ├── state/                # 跨页面共享的 provider：版本、运行配置（乐观更新）、traffic / memory / connections 流
 │   └── storage/              # SharedPreferences provider
 ├── features/                 # 按功能划分：每个功能目录下有 *_page.dart、*_providers.dart、widgets/
 │   ├── overview/             # 概览
@@ -118,9 +176,10 @@ lib/
 │   ├── settings/             # 设置
 │   └── backends/             # 欢迎页、后端添加/编辑/切换 UI
 ├── shared/                   # 跨功能复用
-│   ├── layout/               # 断点 / WindowSizeClass
+│   ├── l10n.dart             # context.l10n 扩展
+│   ├── layout/               # WindowSizeClass 断点、pageGutter（内容最大宽度与两侧留白）
 │   ├── utils/                # 格式化（字节、速率、时长）等
-│   └── widgets/              # 通用组件（空状态、错误视图、分区标题……）
+│   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、搜索框
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
 ```
@@ -241,7 +300,9 @@ flutter analyze                       # 必须 0 issue
 flutter test                          # 必须全部通过
 flutter run -d macos                  # 桌面调试（Debug 下可选「Mock 数据」后端）
 flutter run -d chrome --wasm          # Web（WASM）调试
+flutter run -d web-server --web-port=8686   # 浏览器预览（不支持 --wasm，见已知问题）；.claude/launch.json 中的 web-debug
 flutter build web --wasm              # 验证 WASM 构建
+flutter build ios --simulator --debug # 模拟器包（Debug 才有 Mock 数据入口），再 xcrun simctl install
 ```
 
 ---
@@ -273,7 +334,8 @@ flutter build web --wasm              # 验证 WASM 构建
 2. 不确定的产品或设计决策先问用户，不要自行扩大范围（例如不要加入本地内核管理）。
 3. 新增依赖前按第 3 节的清单检查兼容性，并在技术栈表里写明理由。
 4. 验证要求：
-   - 至少跑 `flutter analyze` 和 `flutter test`；
+   - 至少跑 `flutter analyze` 和 `flutter test`（其中包含窄屏 / 宽屏的页面冒烟测试；新增页面要加进 `test/app/pages_smoke_test.dart`）；
    - UI 改动要分别在窄屏（< 600）和宽屏（≥ 840）下检查；
-   - 涉及依赖或平台代码的改动要跑 `flutter build web --wasm`。
+   - 涉及依赖或平台代码的改动要跑 `flutter build web --wasm`；
+   - iOS 模拟器上的点按、截图等交互检查，交给 Antigravity CLI 处理以节省 token：用 Gemini Flash 模型加 iosef MCP，复用已有的「Aonsoku Dev」模拟器。命令形如 `agy -p "<任务>" --model gemini-3.8-flash-medium --mode auto --sandbox`，要求它输出简短的文字报告，并把截图存成文件。
 5. 完成后更新「当前进度」，按提交规范提交。
