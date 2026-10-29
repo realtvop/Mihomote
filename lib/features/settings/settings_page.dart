@@ -148,27 +148,28 @@ class _AppearanceSection extends ConsumerWidget {
     final items = <Widget>[
       _ControlRow(
         title: l10n.settingsThemeMode,
-        child: M3ESegmentedButton<ThemeMode>(
-          segments: [
-            M3ESegment(
-              value: ThemeMode.system,
-              label: l10n.themeSystem,
+        child: M3EButtonGroup(
+          type: M3EButtonGroupType.connected,
+          selectionRequired: true,
+          actions: [
+            M3EButtonGroupAction(
+              label: Text(l10n.themeSystem),
               icon: const Icon(Icons.brightness_auto_rounded),
             ),
-            M3ESegment(
-              value: ThemeMode.light,
-              label: l10n.themeLight,
+            M3EButtonGroupAction(
+              label: Text(l10n.themeLight),
               icon: const Icon(Icons.light_mode_rounded),
             ),
-            M3ESegment(
-              value: ThemeMode.dark,
-              label: l10n.themeDark,
+            M3EButtonGroupAction(
+              label: Text(l10n.themeDark),
               icon: const Icon(Icons.dark_mode_rounded),
             ),
           ],
-          selected: {settings.themeMode},
-          onSelectionChanged: (selection) =>
-              notifier.setThemeMode(selection.first),
+          selectedIndex: settings.themeMode.index,
+          onSelectedIndexChanged: (index) {
+            if (index == null) return;
+            notifier.setThemeMode(ThemeMode.values[index]);
+          },
         ),
       ),
       if (supportsDynamicColor)
@@ -213,7 +214,7 @@ class _AppearanceSection extends ConsumerWidget {
   }
 }
 
-/// A list row whose control sits under its title (segmented buttons and
+/// A list row whose control sits under its title (button groups and
 /// swatches need the full width).
 class _ControlRow extends StatelessWidget {
   const _ControlRow({this.title, required this.child});
@@ -288,15 +289,18 @@ class _LanguageSection extends ConsumerWidget {
       color: Theme.of(context).colorScheme.card,
       itemCount: 1,
       itemBuilder: (_, _) => _ControlRow(
-        child: M3ESegmentedButton<String>(
-          segments: [
-            M3ESegment(value: 'system', label: l10n.languageSystem),
-            M3ESegment(value: 'zh', label: l10n.languageZh),
-            M3ESegment(value: 'en', label: l10n.languageEn),
+        child: M3EButtonGroup(
+          type: M3EButtonGroupType.connected,
+          selectionRequired: true,
+          actions: [
+            M3EButtonGroupAction(label: Text(l10n.languageSystem)),
+            M3EButtonGroupAction(label: Text(l10n.languageZh)),
+            M3EButtonGroupAction(label: Text(l10n.languageEn)),
           ],
-          selected: {tag},
-          onSelectionChanged: (selection) {
-            final value = selection.first;
+          selectedIndex: const ['system', 'zh', 'en'].indexOf(tag),
+          onSelectedIndexChanged: (index) {
+            if (index == null) return;
+            final value = const ['system', 'zh', 'en'][index];
             ref
                 .read(appSettingsProvider.notifier)
                 .setLocaleTag(value == 'system' ? null : value);

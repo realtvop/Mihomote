@@ -271,7 +271,7 @@ void main() {
         act: (_) async {
           // The switch springs in once the providers load.
           await _pumpFrames(tester);
-          await tester.tap(find.text('Providers'));
+          await tester.tap(find.text('Providers').hitTestable());
           await _pumpFrames(tester);
           await tester.tap(find.text('Subscription'));
           await _pumpFrames(tester);

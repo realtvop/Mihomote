@@ -55,20 +55,18 @@ class _RulesPageState extends ConsumerState<RulesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                M3ESegmentedButton<_RulesTab>(
-                  segments: [
-                    M3ESegment(
-                      value: _RulesTab.rules,
-                      label: l10n.rulesTabRules,
-                    ),
-                    M3ESegment(
-                      value: _RulesTab.providers,
-                      label: l10n.rulesTabProviders,
-                    ),
+                M3EButtonGroup(
+                  type: M3EButtonGroupType.connected,
+                  selectionRequired: true,
+                  actions: [
+                    M3EButtonGroupAction(label: Text(l10n.rulesTabRules)),
+                    M3EButtonGroupAction(label: Text(l10n.rulesTabProviders)),
                   ],
-                  selected: {_tab},
-                  onSelectionChanged: (selection) =>
-                      setState(() => _tab = selection.first),
+                  selectedIndex: _tab.index,
+                  onSelectedIndexChanged: (index) {
+                    if (index == null) return;
+                    setState(() => _tab = _RulesTab.values[index]);
+                  },
                 ),
                 if (_tab == _RulesTab.rules) ...[
                   const SizedBox(height: 12),

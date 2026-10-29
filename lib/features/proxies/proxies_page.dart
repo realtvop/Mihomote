@@ -59,20 +59,18 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
             visible: providers.isNotEmpty,
             child: Padding(
               padding: pageGutter(context).copyWith(top: 4, bottom: 4),
-              child: M3ESegmentedButton<_ProxiesTab>(
-                segments: [
-                  M3ESegment(
-                    value: _ProxiesTab.groups,
-                    label: l10n.proxiesTabGroups,
-                  ),
-                  M3ESegment(
-                    value: _ProxiesTab.providers,
-                    label: l10n.proxiesTabProviders,
-                  ),
+              child: M3EButtonGroup(
+                type: M3EButtonGroupType.connected,
+                selectionRequired: true,
+                actions: [
+                  M3EButtonGroupAction(label: Text(l10n.proxiesTabGroups)),
+                  M3EButtonGroupAction(label: Text(l10n.proxiesTabProviders)),
                 ],
-                selected: {tab},
-                onSelectionChanged: (selection) =>
-                    setState(() => _tab = selection.first),
+                selectedIndex: tab.index,
+                onSelectedIndexChanged: (index) {
+                  if (index == null) return;
+                  setState(() => _tab = _ProxiesTab.values[index]);
+                },
               ),
             ),
           ),
