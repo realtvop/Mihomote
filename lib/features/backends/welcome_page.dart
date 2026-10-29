@@ -48,12 +48,11 @@ class WelcomePage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  Container(
+                  M3ECard(
+                    variant: M3ECardVariant.filled,
+                    color: theme.colorScheme.card,
+                    borderRadius: BorderRadius.circular(28),
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.card,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
                     child: BackendForm(
                       submitLabel: l10n.welcomeConnect,
                       onSubmit: (profile) =>

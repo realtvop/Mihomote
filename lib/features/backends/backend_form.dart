@@ -210,12 +210,11 @@ class _TestResultBanner extends StatelessWidget {
         describeError(l10n, error),
       ),
     };
-    return Container(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),

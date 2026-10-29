@@ -188,9 +188,10 @@ class _AppearanceSection extends ConsumerWidget {
           duration: const Duration(milliseconds: 200),
           child: IgnorePointer(
             ignoring: dynamicActive,
+            // The buttons' 48dp touch targets already pad the 40dp faces.
             child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 4,
+              runSpacing: 4,
               children: [
                 for (final color in seedColorPresets)
                   _SeedSwatch(
@@ -223,8 +224,8 @@ class _ControlRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.card,
+    // The surrounding M3EList paints the row surface.
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,32 +254,24 @@ class _SeedSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label:
+    // Fidelity schemes keep the seed as primaryContainer (see AppTheme), so
+    // its onPrimaryContainer is the contrast color designed for it.
+    final onColor = ColorScheme.fromSeed(
+      seedColor: color,
+      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+    ).onPrimaryContainer;
+    return M3EIconButton(
+      icon: const SizedBox.shrink(),
+      selectedIcon: const Icon(Icons.check_rounded),
+      isSelected: selected,
+      variant: M3EIconButtonVariant.filled,
+      semanticLabel:
           '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, animation) =>
-                ScaleTransition(scale: animation, child: child),
-            child: M3EShapeContainer(
-              key: ValueKey(selected),
-              kind: selected ? M3EShapeKind.cookie9Sided : M3EShapeKind.circle,
-              width: 44,
-              height: 44,
-              color: color,
-              child: selected
-                  ? const Icon(Icons.check_rounded, color: Colors.white)
-                  : null,
-            ),
-          ),
-        ),
+      decoration: M3EIconButtonDecoration(
+        backgroundColor: WidgetStatePropertyAll(color),
+        foregroundColor: WidgetStatePropertyAll(onColor),
       ),
+      onPressed: onTap,
     );
   }
 }
@@ -322,7 +315,8 @@ class _CoreSection extends ConsumerStatefulWidget {
 }
 
 class _CoreSectionState extends ConsumerState<_CoreSection> {
-  final _logLevelMenu = MenuController();
+  /// Anchors the log level menu to its row.
+  final _logLevelRow = GlobalKey();
 
   static const _logLevels = [
     LogLevel.debug,
@@ -331,6 +325,32 @@ class _CoreSectionState extends ConsumerState<_CoreSection> {
     LogLevel.error,
     LogLevel.silent,
   ];
+
+  Future<void> _pickLogLevel(
+    LogLevel current,
+    Future<void> Function(Future<void> Function()) run,
+  ) async {
+    final row = _logLevelRow.currentContext;
+    final anchor = row == null ? null : m3eOverlayRectFor(row);
+    if (anchor == null) return;
+    final l10n = context.l10n;
+    final level = await showM3EMenu<LogLevel>(
+      context: context,
+      anchor: anchor,
+      position: M3EMenuAnchorPosition.bottomEnd,
+      selectedValue: current,
+      children: [
+        for (final level in _logLevels)
+          M3EMenuSelectable(
+            label: logLevelLabel(l10n, level),
+            value: level,
+            selected: level == current,
+          ),
+      ],
+    );
+    if (level == null || level == current) return;
+    await run(() => ref.read(coreConfigProvider.notifier).setLogLevel(level));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -377,28 +397,12 @@ class _CoreSectionState extends ConsumerState<_CoreSection> {
           // Five levels don't fit a segmented button on a phone, so this is
           // a menu instead.
           (
-            MenuAnchor(
-              controller: _logLevelMenu,
-              alignmentOffset: const Offset(16, 0),
-              menuChildren: [
-                for (final level in _logLevels)
-                  MenuItemButton(
-                    leadingIcon: Icon(
-                      level == value.logLevel ? Icons.check_rounded : null,
-                      size: 20,
-                    ),
-                    onPressed: () => run(() => notifier.setLogLevel(level)),
-                    child: Text(logLevelLabel(l10n, level)),
-                  ),
-              ],
-              builder: (context, controller, _) => M3EListItem(
-                headline: l10n.settingsLogLevel,
-                trailingText: logLevelLabel(l10n, value.logLevel),
-              ),
+            M3EListItem(
+              key: _logLevelRow,
+              headline: l10n.settingsLogLevel,
+              trailingText: logLevelLabel(l10n, value.logLevel),
             ),
-            () => _logLevelMenu.isOpen
-                ? _logLevelMenu.close()
-                : _logLevelMenu.open(),
+            () => _pickLogLevel(value.logLevel, run),
           ),
         ];
         return M3EList(

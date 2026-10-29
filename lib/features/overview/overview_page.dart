@@ -106,12 +106,11 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
+      color: Theme.of(context).colorScheme.card,
+      borderRadius: BorderRadius.circular(28),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.card,
-        borderRadius: BorderRadius.circular(28),
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: alignment,
@@ -194,67 +193,67 @@ class _TrafficCard extends ConsumerWidget {
     final traffic = ref.watch(trafficProvider);
     final latest = samples.last;
 
-    return ClipRRect(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
+      color: scheme.primaryContainer,
       borderRadius: BorderRadius.circular(28),
-      child: ColoredBox(
-        color: scheme.primaryContainer,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: _SpeedReadout(
-                      icon: Icons.south_rounded,
-                      label: l10n.overviewDownload,
-                      bytesPerSecond: latest.down,
-                      color: onCard,
-                      arrowColor: onCard,
-                      size: large ? _ReadoutSize.hero : _ReadoutSize.large,
-                    ),
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _SpeedReadout(
+                    icon: Icons.south_rounded,
+                    label: l10n.overviewDownload,
+                    bytesPerSecond: latest.down,
+                    color: onCard,
+                    arrowColor: onCard,
+                    size: large ? _ReadoutSize.hero : _ReadoutSize.large,
                   ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    flex: 2,
-                    child: _SpeedReadout(
-                      icon: Icons.north_rounded,
-                      label: l10n.overviewUpload,
-                      bytesPerSecond: latest.up,
-                      color: onCard,
-                      arrowColor: accent,
-                      size: _ReadoutSize.small,
-                      end: true,
-                    ),
+                ),
+                const SizedBox(width: 16),
+                Flexible(
+                  flex: 2,
+                  child: _SpeedReadout(
+                    icon: Icons.north_rounded,
+                    label: l10n.overviewUpload,
+                    bytesPerSecond: latest.up,
+                    color: onCard,
+                    arrowColor: accent,
+                    size: _ReadoutSize.small,
+                    end: true,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            SizedBox(
-              height: large ? 150 : 112,
-              child: traffic.hasError && !traffic.hasValue
-                  ? Center(
-                      child: Text(
-                        describeError(l10n, traffic.error!),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: onCard,
-                        ),
+          ),
+          SizedBox(
+            height: large ? 150 : 112,
+            child: traffic.hasError && !traffic.hasValue
+                ? Center(
+                    child: Text(
+                      describeError(l10n, traffic.error!),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: onCard,
                       ),
-                    )
-                  : TrafficChart(
-                      samples: samples,
-                      capacity: TrafficHistoryNotifier.capacity,
-                      downColor: onCard,
-                      upColor: accent,
                     ),
-            ),
-          ],
-        ),
+                  )
+                : TrafficChart(
+                    samples: samples,
+                    capacity: TrafficHistoryNotifier.capacity,
+                    downColor: onCard,
+                    upColor: accent,
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -595,41 +594,36 @@ class _ActionTileState extends State<_ActionTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Material(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
       color: scheme.cardInset,
       borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _running ? null : _onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              SizedBox.square(
-                dimension: 20,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _running
-                      ? const M3ELoadingIndicator(size: 20)
-                      : Icon(
-                          widget.icon,
-                          size: 20,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge,
-                ),
-              ),
-            ],
+      padding: const EdgeInsets.all(12),
+      // Stays actionable while running (no disabled fade); taps are ignored.
+      onPressed: () {
+        if (!_running) _onTap();
+      },
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 20,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _running
+                  ? const M3ELoadingIndicator(size: 20)
+                  : Icon(widget.icon, size: 20, color: scheme.onSurfaceVariant),
+            ),
           ),
-        ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge,
+            ),
+          ),
+        ],
       ),
     );
   }

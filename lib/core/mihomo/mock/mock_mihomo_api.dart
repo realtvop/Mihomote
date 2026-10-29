@@ -355,8 +355,13 @@ class MockMihomoApi implements MihomoApi {
       await Future<void>.delayed(
         Duration(milliseconds: 250 + _random.nextInt(1100)),
       );
-      final entry = _randomLog();
-      if (order.indexOf(entry.level) >= minIndex) yield entry;
+      // Every tick must reach the yield: a cancelled async* generator only
+      // stops there, so skipping filtered entries kept it creating timers.
+      LogEntry entry;
+      do {
+        entry = _randomLog();
+      } while (order.indexOf(entry.level) < minIndex);
+      yield entry;
     }
   }
 

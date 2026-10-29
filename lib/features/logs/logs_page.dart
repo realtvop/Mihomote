@@ -57,25 +57,27 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         if (state.paused) l10n.statusPaused,
       ].join(' · '),
       actions: [
-        MenuAnchor(
-          menuChildren: [
+        M3EMenu(
+          position: M3EMenuAnchorPosition.bottomEnd,
+          selectedValue: level,
+          onSelected: (option) {
+            if (option is LogLevel) {
+              ref.read(logLevelFilterProvider.notifier).set(option);
+            }
+          },
+          children: [
             for (final option in _levels)
-              MenuItemButton(
-                leadingIcon: Icon(
-                  option == level ? Icons.check_rounded : null,
-                  size: 20,
-                ),
-                onPressed: () =>
-                    ref.read(logLevelFilterProvider.notifier).set(option),
-                child: Text(logLevelLabel(l10n, option)),
+              M3EMenuSelectable(
+                label: logLevelLabel(l10n, option),
+                value: option,
+                selected: option == level,
               ),
           ],
-          builder: (context, controller, _) => M3EIconButton(
+          anchorBuilder: (context, open) => M3EIconButton(
             icon: const Icon(Icons.filter_list_rounded),
             variant: M3EIconButtonVariant.standard,
             tooltip: '${l10n.logsLevelTooltip} · ${logLevelLabel(l10n, level)}',
-            onPressed: () =>
-                controller.isOpen ? controller.close() : controller.open(),
+            onPressed: open,
           ),
         ),
         M3EIconButton(
@@ -122,14 +124,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         else
           SliverPadding(
             padding: pageGutter(context),
-            sliver: SliverList.separated(
+            sliver: M3EList.sliver(
+              color: Theme.of(context).colorScheme.card,
               itemCount: entries.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 2),
-              itemBuilder: (context, index) => _LogTile(
-                entry: entries[index],
-                first: index == 0,
-                last: index == entries.length - 1,
-              ),
+              itemBuilder: (context, index) => _LogTile(entry: entries[index]),
             ),
           ),
       ],
@@ -138,15 +136,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 }
 
 class _LogTile extends StatelessWidget {
-  const _LogTile({
-    required this.entry,
-    required this.first,
-    required this.last,
-  });
+  const _LogTile({required this.entry});
 
   final LogEntry entry;
-  final bool first;
-  final bool last;
 
   static final _time = DateFormat.Hms();
 
@@ -161,19 +153,14 @@ class _LogTile extends StatelessWidget {
       LogLevel.debug => scheme.outline,
       _ => scheme.onSurfaceVariant,
     };
-    // Segmented-list corners: large at the ends of the group, small between.
-    final radius = BorderRadius.vertical(
-      top: Radius.circular(first ? 20 : 4),
-      bottom: Radius.circular(last ? 20 : 4),
-    );
     final meta = theme.textTheme.labelMedium?.copyWith(
       color: scheme.onSurfaceVariant,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 
-    return Container(
+    // The surrounding M3EList paints the segmented row surface.
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      decoration: BoxDecoration(color: scheme.card, borderRadius: radius),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

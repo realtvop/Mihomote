@@ -106,10 +106,7 @@ class ProxyGroupCard extends ConsumerWidget {
 
     // Built once per data change, not per animation frame: the motion
     // builder below only re-clips them.
-    final summary = InkWell(
-      onTap: toggle,
-      child: _Summary(state: state, group: group),
-    );
+    final summary = _Summary(state: state, group: group);
     final grid = Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: _MemberGrid(
@@ -121,31 +118,40 @@ class ProxyGroupCard extends ConsumerWidget {
       ),
     );
 
-    return Material(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
       color: scheme.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(onTap: toggle, child: header),
-          SingleMotionBuilder(
-            value: expanded ? 1 : 0,
-            motion: const MaterialSpringMotion.standardSpatialDefault(),
-            builder: (context, t, _) {
-              final open = t.clamp(0.0, 1.0);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (open < 0.999 || !expanded)
-                    _Reveal(factor: 1 - open, child: summary),
-                  if (open > 0.001 || expanded)
-                    _Reveal(factor: open, child: grid),
-                ],
-              );
-            },
-          ),
-        ],
+      borderRadius: BorderRadius.circular(28),
+      padding: EdgeInsets.zero,
+      child: SingleMotionBuilder(
+        value: expanded ? 1 : 0,
+        motion: const MaterialSpringMotion.standardSpatialDefault(),
+        builder: (context, t, _) {
+          final open = t.clamp(0.0, 1.0);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The header and the collapsed summary toggle the group
+              // together; the outer card clips this pressable area's corners.
+              M3ECard(
+                variant: M3ECardVariant.filled,
+                color: Colors.transparent,
+                borderRadius: BorderRadius.zero,
+                padding: EdgeInsets.zero,
+                onPressed: toggle,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    header,
+                    if (open < 0.999 || !expanded)
+                      _Reveal(factor: 1 - open, child: summary),
+                  ],
+                ),
+              ),
+              if (open > 0.001 || expanded) _Reveal(factor: open, child: grid),
+            ],
+          );
+        },
       ),
     );
   }
@@ -286,69 +292,55 @@ class _MemberTile extends StatelessWidget {
     // Long-press (touch) and right-click (mouse) both test this member.
     return GestureDetector(
       onSecondaryTapUp: (TapUpDetails _) => onTest(),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: selected ? scheme.primaryContainer : scheme.cardInset,
-          borderRadius: BorderRadius.circular(selected ? 22 : 14),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            onLongPress: onTest,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: foreground,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          type,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: muted,
-                          ),
-                        ),
-                      ),
-                      if (testing)
-                        const SizedBox.square(
-                          dimension: 16,
-                          child: M3ELoadingIndicator(size: 16),
-                        )
-                      else if (selected)
-                        // Colored text wouldn't read on the primary fill.
-                        DelayBadge(
-                          delay: delay,
-                          color: muted,
-                          style: theme.textTheme.labelSmall,
-                        )
-                      else
-                        DelayLabel(
-                          delay: delay,
-                          style: theme.textTheme.labelSmall,
-                        ),
-                    ],
-                  ),
-                ],
+      child: M3ECard(
+        variant: M3ECardVariant.filled,
+        color: selected ? scheme.primaryContainer : scheme.cardInset,
+        borderRadius: BorderRadius.circular(selected ? 22 : 14),
+        animationDuration: const Duration(milliseconds: 250),
+        animationCurve: Curves.easeOutCubic,
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        onPressed: onTap,
+        onLongPress: onTest,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: foreground,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
-          ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    type,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                  ),
+                ),
+                if (testing)
+                  const SizedBox.square(
+                    dimension: 16,
+                    child: M3ELoadingIndicator(size: 16),
+                  )
+                else if (selected)
+                  // Colored text wouldn't read on the primary fill.
+                  DelayBadge(
+                    delay: delay,
+                    color: muted,
+                    style: theme.textTheme.labelSmall,
+                  )
+                else
+                  DelayLabel(delay: delay, style: theme.textTheme.labelSmall),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -23,48 +23,65 @@ class BackendSwitcher extends ConsumerWidget {
     if (active == null) return const SizedBox.shrink();
     final l10n = context.l10n;
 
-    return MenuAnchor(
-      alignmentOffset: const Offset(0, 4),
-      menuChildren: [
-        for (final profile in state.profiles)
-          MenuItemButton(
-            leadingIcon: Icon(
-              profile.id == active.id
-                  ? Icons.check_circle_rounded
-                  : Icons.circle_outlined,
-              size: 20,
+    final notifier = ref.read(backendsProvider.notifier);
+    final openSettings = ShellScope.maybeOf(context)?.openSettings;
+
+    M3EMenu menu({
+      required M3EMenuAnchorPosition position,
+      required M3EMenuAnchorBuilder anchorBuilder,
+    }) {
+      return M3EMenu(
+        position: position,
+        selectedValue: active.id,
+        anchorBuilder: anchorBuilder,
+        children: [
+          for (final profile in state.profiles)
+            M3EMenuSelectable(
+              label: profile.name,
+              supportingText: profile.isMock
+                  ? l10n.backendMockDescription
+                  : profile.displayAddress,
+              value: profile.id,
+              selected: profile.id == active.id,
+              onPressed: () => notifier.activate(profile.id),
             ),
-            onPressed: () =>
-                ref.read(backendsProvider.notifier).activate(profile.id),
-            child: _ProfileLabel(profile: profile),
+          const M3EMenuDivider(),
+          M3EMenuEntry(
+            label: l10n.backendManage,
+            leading: const Icon(Icons.tune_rounded),
+            enabled: openSettings != null,
+            onPressed: openSettings,
           ),
-        const Divider(height: 8),
-        MenuItemButton(
-          leadingIcon: const Icon(Icons.tune_rounded, size: 20),
-          onPressed: ShellScope.maybeOf(context)?.openSettings,
-          child: Text(l10n.backendManage),
-        ),
-      ],
-      builder: (context, controller, _) {
-        void toggle() =>
-            controller.isOpen ? controller.close() : controller.open();
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // App bar actions lay out with unbounded width; only go wide
-            // when a parent (the expanded rail) actually offers room.
-            final wide =
-                constraints.hasBoundedWidth && constraints.maxWidth >= 160;
-            return Tooltip(
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // App bar actions lay out with unbounded width; only go wide when a
+        // parent (the expanded rail) actually offers room.
+        final wide = constraints.hasBoundedWidth && constraints.maxWidth >= 160;
+        if (wide) {
+          return menu(
+            position: M3EMenuAnchorPosition.bottomStart,
+            anchorBuilder: (context, open) => M3ETooltip(
               message: l10n.backendSwitcherTooltip,
-              child: wide
-                  ? _WideTrigger(profile: active, onTap: toggle)
-                  : _BackendAvatar(
-                      profile: active,
-                      ringColor: Theme.of(context).colorScheme.canvas,
-                      onTap: toggle,
-                    ),
-            );
-          },
+              child: _WideTrigger(profile: active, onTap: open),
+            ),
+          );
+        }
+        return menu(
+          position: M3EMenuAnchorPosition.bottomEnd,
+          anchorBuilder: (context, open) => M3EIconButton(
+            icon: _BackendAvatar(
+              profile: active,
+              ringColor: Theme.of(context).colorScheme.canvas,
+            ),
+            variant: M3EIconButtonVariant.standard,
+            tooltip: l10n.backendSwitcherTooltip,
+            semanticLabel: active.name,
+            onPressed: open,
+          ),
         );
       },
     );
@@ -100,18 +117,14 @@ class _ProfileLabel extends StatelessWidget {
 }
 
 /// Initial inside an expressive shape, with a dot for connection health.
+/// Sized to sit inside a standard icon button.
 class _BackendAvatar extends ConsumerWidget {
-  const _BackendAvatar({
-    required this.profile,
-    required this.ringColor,
-    this.onTap,
-  });
+  const _BackendAvatar({required this.profile, required this.ringColor});
 
   final BackendProfile profile;
 
   /// The background behind the avatar, used to cut the health dot out.
   final Color ringColor;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -126,49 +139,41 @@ class _BackendAvatar extends ConsumerWidget {
         ? '?'
         : profile.name.trim().characters.first.toUpperCase();
 
-    return Semantics(
-      button: true,
-      label: profile.name,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 24,
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              M3EShapeContainer(
-                kind: M3EShapeKind.cookie4Sided,
-                width: 36,
-                height: 36,
-                color: scheme.primaryContainer,
-                child: Center(
-                  child: Text(
-                    initial,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+    return SizedBox.square(
+      dimension: 40,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          M3EShapeContainer(
+            kind: M3EShapeKind.cookie4Sided,
+            width: 32,
+            height: 32,
+            color: scheme.primaryContainer,
+            child: Center(
+              child: Text(
+                initial,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              Positioned(
-                right: 6,
-                bottom: 6,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ringColor, width: 2),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          // Kept inside the button's round face so it isn't clipped.
+          Positioned(
+            right: 5,
+            bottom: 5,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: ringColor, width: 2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -183,27 +188,24 @@ class _WideTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
+    return M3ECard(
+      variant: M3ECardVariant.filled,
       color: scheme.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
-          child: Row(
-            children: [
-              _BackendAvatar(profile: profile, ringColor: scheme.card),
-              const SizedBox(width: 4),
-              Expanded(child: _ProfileLabel(profile: profile)),
-              Icon(
-                Icons.unfold_more_rounded,
-                size: 20,
-                color: scheme.onSurfaceVariant,
-              ),
-            ],
+      borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+      semanticLabel: profile.name,
+      onPressed: onTap,
+      child: Row(
+        children: [
+          _BackendAvatar(profile: profile, ringColor: scheme.card),
+          const SizedBox(width: 8),
+          Expanded(child: _ProfileLabel(profile: profile)),
+          Icon(
+            Icons.unfold_more_rounded,
+            size: 20,
+            color: scheme.onSurfaceVariant,
           ),
-        ),
+        ],
       ),
     );
   }

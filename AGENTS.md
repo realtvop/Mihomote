@@ -66,11 +66,17 @@
   - 代理 / 连接 / 规则 / 日志 / 设置：去掉装饰性形状和彩色徽章，元信息一律弱化显示；选中态是唯一的强调色
   - 动效：页签切换淡入（`branch_transition.dart`）；深浅色切换渐变（`_ThemeTransition`）；代理组展开用弹簧且不逐帧重建节点网格；去掉常驻旋转装饰
   - 顺带修复：`M3EList` 里的行点按一直无效（连接详情、切换 / 添加后端、日志等级菜单都打不开，见已知问题）；连接详情 sheet 缺少 Material 祖先、内容超高时溢出
+- [x] **UI 全部改用 M3E 组件**（用户要求，规则见 §3.2）
+  - 菜单：后端切换、日志筛选用 `M3EMenu`；设置里的日志等级行用 `showM3EMenu` 锚定在该行
+  - 对话框：添加 / 编辑后端在窄屏用 `M3EDialog.showFullScreen`、其余用 `M3EDialog.show`；删除后端、断开全部连接的确认框用 `M3EDialog`
+  - 表面与可点区域：概览卡片、流量卡、快捷操作、代理组卡片与节点、欢迎页表单、连接测试结果都改为 `M3ECard`；后端切换器窄屏是 `M3EIconButton`、宽屏是 `M3ECard`；种子色色板是 `M3EIconButton` 的切换态
+  - 列表：连接详情改为 `M3EList`（点一行复制该值）；日志行改为 `M3EList.sliver`
+  - mock 修复：日志流在低于筛选等级的条目上不 `yield`，取消订阅后仍不断创建计时器，导致测试偶发失败
 - [x] **验证**（mock 数据）：
-  - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过）
+  - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
-  - 编译通过：`flutter build web --wasm`（改版后）、`flutter build macos --debug`（改版前）
-  - `flutter test`：38 个测试全部通过（深色切换测试会检查过渡中途 Material 与 M3E 颜色一致；连接详情测试在窄屏 / 宽屏分别点开 bottom sheet / side sheet）
+  - 编译通过：`flutter build web --wasm`（改为全 M3E 后）、`flutter build macos --debug`（改版前）
+  - `flutter test`：50 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、两个确认框；深色切换测试检查过渡中途 Material 与 M3E 颜色一致
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -93,7 +99,11 @@
 - M3E flexible 顶栏的高度是固定的，标题一旦换行就会溢出。因此 `PageScaffold` 在窄屏用 `mediumFlexible`、宽屏才用 `largeFlexible`；页面标题保持简短。
 - `M3EList` 的行底色取自卡片列表的 variant（filled 时是 `surfaceContainerHighest`），不读 list item 主题。每个 `M3EList` / `M3EList.sliver` 都要传 `color: scheme.card`。
 - `M3EList` 里的 `M3EListItem` 会被当成嵌入项，**它自己的 `onTap` 不生效**。点按要交给列表分发：`M3EList(onTap: (index) => …)`；单行是否可点仍看该行 `M3EListItem` 的 `enabled`。
-- M3E 的 bottom sheet / side sheet 不给内容提供 Material：内容里有 `InkWell` 之类的墨水效果时，要自己包一层 `Material(type: MaterialType.transparency)`。内容可能超出屏幕高度时用 `SingleChildScrollView`，它会接上 sheet 的 `PrimaryScrollController`（先拖动 sheet，再滚动内容）。
+- M3E 的 bottom sheet / side sheet 不给内容提供 Material，旧的 `InkWell` 放进去会报 “No Material widget found”（M3E 组件自带墨水宿主，没有这个问题）。内容可能超出屏幕高度时用 `SingleChildScrollView`，它会接上 sheet 的 `PrimaryScrollController`（先拖动 sheet，再滚动内容）。
+- 可点的 `M3ECard` 会把内容撑到 `width: double.infinity`，不能放在宽度不受限的地方（例如 `M3EAppBar` 的 actions）；那里用 `M3EIconButton`（`BackendSwitcher` 窄屏就是这样）。
+- `M3EMenu` 通过 `anchorBuilder` 的 `open` 打开，只适合自己有按钮的锚点。`M3EList` 里的行点按要经过列表分发，这种行用 `GlobalKey` 标记，再用 `showM3EMenu` 加 `m3eOverlayRectFor` 锚定（设置页日志等级）。
+- M3E 的弹簧动画（菜单、sheet 等，基于 `motor`）按帧推进。widget 测试里一次 `pump(500ms)` 几乎不动，菜单看起来像没打开；要连续 pump 16ms 的帧（冒烟测试里的 `_pumpFrames`）。
+- `M3EDialog.showFullScreen` 不转发 `closeLabel`，全屏对话框关闭按钮的提示文字固定是英文 “Close”（`M3EDialogStrings`）；side sheet 的关闭按钮同理。等上游支持本地化。
 - 可变字体：主题里**不能**写死 `wght` 轴。Flutter 各渲染器在样式没指定 `wght` 时会按 `fontWeight` 设置它；写死后，组件里 `copyWith(fontWeight: …)` 就不再生效（`fonts.dart` 中 `syncWghtToWeight: false`）。
 - `M3EAppBar` 的 `actions` 是在**宽度不受限**的 Row 中布局的。放进 actions 的组件不能用 `Expanded`，也不能依赖 `maxWidth`（`BackendSwitcher` 已经处理了这种情况）。
 - iOS 26.3 模拟器上，Flutter 的系统字体回落失效，中文和 emoji 都显示成方块。
@@ -141,9 +151,11 @@
 - 同时 import `material_ui` 和 `material_new_shapes` 时会有命名冲突：`import 'package:material_ui/material_ui.dart' hide CornerRounding, RoundedPolygon;`
 
 ### 3.2 M3 Expressive 组件：`material_3_expressive`
-- 有对应的 `M3E*` 组件时优先使用：`M3ENavigationBar`、`M3ENavigationRail`、`M3EAppBar`、`M3EButton`、`M3EIconButton`、`M3EButtonGroup`、`M3ESegmentedButton`、`M3ESplitButton`、`M3EFab` / `M3EExtendedFab` / `M3EFabMenu`、`M3EToolbar`、`M3ECard`、`M3EListItem` / `M3EList`、`M3EChip`、`M3ETextField`、`M3ESwitch`、`M3ESlider`、`M3ELoadingIndicator`、`M3EProgressIndicator`、`M3EDialog`、`M3EBottomSheet`、`M3ESideSheet`、`M3ESnackbar`、`M3ETooltip`、`M3ESearchBar` 等。
+- **UI 只用 M3E 组件（硬性规则，用户要求）。** 可用的有：`M3ENavigationBar`、`M3ENavigationRail`、`M3EAppBar`、`M3EButton`、`M3EIconButton`、`M3EButtonGroup`、`M3ESegmentedButton`、`M3ESplitButton`、`M3EFab` / `M3EExtendedFab` / `M3EFabMenu`、`M3EToolbar`、`M3ECard`、`M3EListItem` / `M3EList`、`M3EChip`、`M3ETextField`、`M3ESwitch`、`M3ESlider`、`M3ELoadingIndicator`、`M3EProgressIndicator`、`M3EDialog`、`M3EBottomSheet`、`M3ESideSheet`、`M3ESnackbar`、`M3ETooltip`、`M3EMenu`、`M3ESearchBar` 等。
+  - 禁止使用旧版 Material 组件：`MenuAnchor` / `MenuItemButton` / `PopupMenuButton`（改用 `M3EMenu` 或 `showM3EMenu`）、`showDialog` / `AlertDialog` / `Dialog`（改用 `M3EDialog.show` / `showFullScreen`）、`Tooltip`（改用 `M3ETooltip` 或组件自带的 `tooltip`）、`Divider`、`Card`、`ListTile`、`InkWell` / `InkResponse` / `Material`（可点的自定义区域用 `M3ECard` 的 `onPressed` / `onLongPress`）。
+  - 卡片表面一律用 `M3ECard`（`variant: filled`，颜色取 §6.3 的表面层级）；不可交互的卡片不传 `onPressed`。不要再用 `Container` 加 `BoxDecoration` 拼卡片。
+  - 只有 M3E 没有对应组件时才用框架组件：`Scaffold`、`SelectableText`、纯装饰的状态圆点等。
 - 读取 M3E token（颜色、字体、形状、间距、动效）用 `M3ETheme.of(context)`；`Theme.of(context)` 也能拿到投影过来的 `ColorScheme` 和 `TextTheme`。
-- 例外：**不可交互的卡片表面**（概览卡片、欢迎页表单底板）直接用 `Container` 加 `scheme.card` 和 28 圆角，不用 `M3ECard`。后者带按压、滑动、展开等交互机制，静态表面用不上；需要点按或滑动的卡片仍用 `M3ECard`。
 - **`M3EMaterialApp` 不支持 Router。** 本项目在 `lib/app/app.dart` 中用 `MaterialApp.router` 复刻了它的行为：`AppTheme` 生成亮 / 暗两套 `M3EThemeData` 和对应的 `ThemeData`，`builder` 里按解析后的亮度用 `M3EResolvedTheme` 注入。不用 `M3ETheme`，因为它的暗色主题是从亮色主色重新取种子、用默认方案推出来的，会和 Material 侧对不上。不要改回 `M3EMaterialApp`；升级 M3E 包时要对照它的实现检查是否需要同步。
 - 风险：这是单人维护的社区包。官方 `material_ui` 补齐某个 M3E 组件后（可跟踪 [flutter#168813](https://github.com/flutter/flutter/issues/168813)），优先迁回官方实现。遇到组件 bug 时，先在 `lib/shared/widgets/` 里做局部封装或绕过，不要直接 fork。
 
@@ -262,7 +274,7 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 
 ### 6.2 输入方式适配
 - **触屏**：点击目标不小于 48dp；次要操作放进长按菜单或 bottom sheet；列表支持下拉刷新。
-- **鼠标 / 键盘（桌面与 Web）**：要有 hover 状态和 tooltip；右键菜单与长按菜单提供同一组操作；可见滚动条；关键信息（IP、域名、规则）可以选中复制；键盘可以完成全部操作（焦点顺序、快捷键：`Ctrl/Cmd+1…6` 切换页面，`Ctrl/Cmd+F` 或 `/` 搜索，`Ctrl/Cmd+R` 刷新——计划中）。
+- **鼠标 / 键盘（桌面与 Web）**：要有 hover 状态和 tooltip；右键菜单与长按菜单提供同一组操作；可见滚动条；关键信息（IP、域名、规则）可以复制（连接详情点一行即复制，日志正文可选中）；键盘可以完成全部操作（焦点顺序、快捷键：`Ctrl/Cmd+1…6` 切换页面，`Ctrl/Cmd+F` 或 `/` 搜索，`Ctrl/Cmd+R` 刷新——计划中）。
 
 ### 6.3 颜色
 - 默认开启动态取色：Android 12+ 跟随壁纸，macOS / Windows 跟随系统强调色，其余平台用种子色兜底。设置里可以关闭动态取色并选择种子色预设（`lib/app/theme/`）。

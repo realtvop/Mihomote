@@ -9,6 +9,8 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mihomote/app/app.dart';
 import 'package:mihomote/app/router.dart';
+import 'package:mihomote/app/shell/backend_switcher.dart';
+import 'package:mihomote/features/backends/backend_form.dart';
 import 'package:mihomote/features/settings/settings_page.dart';
 import 'package:mihomote/core/backends/backend_profile.dart';
 import 'package:mihomote/core/settings/app_settings.dart';
@@ -91,6 +93,14 @@ Future<void> _render(
   }
 }
 
+/// Pumps real-length frames. M3E springs (menus, sheets) advance per frame,
+/// so one long pump leaves them barely started.
+Future<void> _pumpFrames(WidgetTester tester, {int count = 40}) async {
+  for (var i = 0; i < count; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
 void main() {
   const routes = [
     AppRoutes.overview,
@@ -128,13 +138,141 @@ void main() {
         size: size,
         withMockBackend: true,
         route: AppRoutes.connections,
-        act: (_) => tester.tap(find.byType(M3EListItem).first),
+        // On the headline: a wide row's center is empty space between texts.
+        act: (_) => tester.tap(
+          find
+              .descendant(
+                of: find.byType(M3EListItem).first,
+                matching: find.byType(Text),
+              )
+              .first,
+        ),
         verify: () {
           expect(find.text('Download'), findsOneWidget);
           expect(find.text('Upload'), findsOneWidget);
           // The bundled font has no arrows; they render as boxes on iOS 26
           // (AGENTS.md §6.7).
           expect(find.textContaining(RegExp('[←↑→↓]')), findsNothing);
+        },
+      );
+    });
+  }
+
+  // Every menu and dialog opens without layout errors on both window sizes.
+  for (final MapEntry(key: label, value: size) in _sizes.entries) {
+    testWidgets('backend menu opens ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.overview,
+        act: (_) async {
+          await tester.tap(find.byType(BackendSwitcher).first);
+          await _pumpFrames(tester);
+        },
+        verify: () {
+          // The mock profile, then "Manage backends".
+          expect(find.byType(M3EMenuItem), findsNWidgets(2));
+          expect(find.text('Manage backends'), findsOneWidget);
+        },
+      );
+    });
+
+    testWidgets('log level menu sets the level ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.settings,
+        act: (_) async {
+          final row = find.text('Log level');
+          await tester.scrollUntilVisible(
+            row,
+            200,
+            scrollable: find
+                .descendant(
+                  of: find.byType(SettingsPage),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          // Off the screen edge, where scrollUntilVisible may leave it.
+          await Scrollable.ensureVisible(tester.element(row), alignment: 0.5);
+          await tester.pump();
+          await tester.tap(row);
+          await _pumpFrames(tester);
+          expect(find.byType(M3EMenuItem), findsNWidgets(5));
+          await tester.tap(find.widgetWithText(M3EMenuItem, 'Warning'));
+          await _pumpFrames(tester);
+        },
+        verify: () {
+          expect(find.byType(M3EMenuItem), findsNothing);
+          expect(find.text('Warning'), findsOneWidget);
+        },
+      );
+    });
+
+    testWidgets('log filter menu opens ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.logs,
+        act: (_) async {
+          await tester.tap(find.byIcon(Icons.filter_list_rounded));
+          await _pumpFrames(tester);
+        },
+        verify: () => expect(find.byType(M3EMenuItem), findsNWidgets(4)),
+      );
+    });
+
+    testWidgets('backend editor opens ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.settings,
+        act: (_) async {
+          await tester.tap(find.byIcon(Icons.add_rounded));
+          await _pumpFrames(tester);
+        },
+        verify: () {
+          expect(find.byType(BackendForm), findsOneWidget);
+          expect(
+            find.byType(label == 'compact' ? M3EFullScreenDialog : M3EDialog),
+            findsOneWidget,
+          );
+        },
+      );
+    });
+
+    testWidgets('closing all connections asks first ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.connections,
+        act: (_) async {
+          await tester.tap(find.byIcon(Icons.clear_all_rounded));
+          await _pumpFrames(tester);
+        },
+        verify: () => expect(find.byType(M3EDialog), findsOneWidget),
+      );
+    });
+
+    testWidgets('deleting a backend asks first ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.settings,
+        act: (_) async {
+          await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+          await _pumpFrames(tester);
+        },
+        verify: () {
+          expect(find.byType(M3EDialog), findsOneWidget);
+          expect(find.widgetWithText(M3EButton, 'Delete'), findsOneWidget);
         },
       );
     });

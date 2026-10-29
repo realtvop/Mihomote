@@ -41,20 +41,22 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
 
   Future<void> _closeAll(int count) async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.connectionsCloseAllConfirm(count)),
-        actions: [
-          M3EButton.text(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          M3EButton.filled(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.connectionsCloseAll),
-          ),
-        ],
+    final confirmed = await M3EDialog.show<bool>(
+      context,
+      dialog: Builder(
+        builder: (dialogContext) => M3EDialog(
+          title: l10n.connectionsCloseAllConfirm(count),
+          actions: [
+            M3EButton.text(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.actionCancel),
+            ),
+            M3EButton.filled(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.connectionsCloseAll),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
@@ -266,72 +268,46 @@ class _ConnectionDetails extends ConsumerWidget {
       (l10n.overviewUpload, formatBytes(c.upload)),
     ];
 
-    // The sheet has no Material of its own; the rows' ink needs one. The
-    // scroll view picks up the sheet's primary controller, so dragging the
-    // content resizes the bottom sheet before it scrolls.
-    return Material(
-      type: MaterialType.transparency,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final (label, value) in entries)
-              _DetailRow(label: label, value: value),
-            const SizedBox(height: 16),
-            M3EButton.tonal(
-              onPressed: () async {
-                try {
-                  await ref.read(connectionsProvider.notifier).close(c.id);
-                  if (context.mounted) Navigator.of(context).maybePop();
-                } catch (e) {
-                  if (context.mounted) showErrorSnackbar(context, e);
-                }
-              },
-              icon: const Icon(Icons.link_off_rounded),
-              label: Text(l10n.connectionsClose),
+    // Tapping a row copies its value. The scroll view picks up the sheet's
+    // primary controller, so dragging the content resizes the bottom sheet
+    // before it scrolls.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          M3EList(
+            color: Theme.of(context).colorScheme.card,
+            itemCount: entries.length,
+            itemBuilder: (_, index) => M3EListItem(
+              headline: entries[index].$1,
+              supportingText: entries[index].$2,
             ),
-          ],
-        ),
+            onTap: (index) => _copy(context, entries[index].$2),
+          ),
+          const SizedBox(height: 16),
+          M3EButton.tonal(
+            onPressed: () async {
+              try {
+                await ref.read(connectionsProvider.notifier).close(c.id);
+                if (context.mounted) Navigator.of(context).maybePop();
+              } catch (e) {
+                if (context.mounted) showErrorSnackbar(context, e);
+              }
+            },
+            icon: const Icon(Icons.link_off_rounded),
+            label: Text(l10n.connectionsClose),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onLongPress: () async {
-        await Clipboard.setData(ClipboardData(text: value));
-        if (context.mounted) {
-          M3ESnackbar.show(context, message: context.l10n.actionCopied);
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 2),
-            SelectableText(value, style: theme.textTheme.bodyLarge),
-          ],
-        ),
-      ),
-    );
+  Future<void> _copy(BuildContext context, String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (context.mounted) {
+      M3ESnackbar.show(context, message: context.l10n.actionCopied);
+    }
   }
 }
