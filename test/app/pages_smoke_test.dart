@@ -260,6 +260,37 @@ void main() {
       );
     });
 
+    testWidgets('proxy providers open and health-check ($label)', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.proxies,
+        act: (_) async {
+          // The switch springs in once the providers load.
+          await _pumpFrames(tester);
+          await tester.tap(find.text('Providers'));
+          await _pumpFrames(tester);
+          await tester.tap(find.text('Subscription'));
+          await _pumpFrames(tester);
+          await tester.tap(find.byIcon(Icons.speed_rounded).first);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(find.byType(M3ELoadingIndicator), findsOneWidget);
+          await tester.pump(const Duration(seconds: 3));
+          await _pumpFrames(tester);
+        },
+        verify: () {
+          expect(find.text('Backup'), findsOneWidget);
+          // The core's implicit provider for inline proxies stays hidden.
+          expect(find.text('default'), findsNothing);
+          expect(find.text('🇭🇰 香港 01'), findsOneWidget);
+          expect(find.byType(M3ELoadingIndicator), findsNothing);
+        },
+      );
+    });
+
     testWidgets('deleting a backend asks first ($label)', (tester) async {
       await _render(
         tester,

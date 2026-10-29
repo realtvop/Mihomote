@@ -46,9 +46,10 @@
 - [x] **M1 核心页面**
   - 概览：实时速率曲线、累计流量、内存、连接数、模式切换按钮组、快捷操作
   - 代理：
-    - 策略组卡片（按组类型使用不同的 MaterialShape），折叠时显示每个成员的延迟色点
-    - 节点网格，点击即选择
+    - 策略组卡片：折叠时显示当前选择及其延迟，展开为节点网格，点击即选择
     - 组测速；单节点测速通过长按或右键触发
+    - 代理集：存在代理集时，顶部出现「策略组 / 代理集」切换（弹簧展开，没有代理集时不显示）。代理集卡片显示来源类型、节点数、更新时间和订阅流量（进度条，用量 ≥ 90% 变红，带到期日）；可以健康检查、更新（仅 HTTP）、展开查看节点延迟；内核隐式的 `Compatible` 代理集不显示
+    - 卡片的展开逻辑和节点网格由策略组和代理集共用（`widgets/expandable_card.dart`、`widgets/member_grid.dart`）
 - [x] **M2 基础版**
   - 连接：实时列表、搜索、单连接速率、详情（自适应 bottom sheet / side sheet）、断开 / 全部断开、暂停
   - 规则：规则列表加搜索；规则集列表，可更新
@@ -76,7 +77,7 @@
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
   - 编译通过：`flutter build web --wasm`（改为全 M3E 后）、`flutter build macos --debug`（改版前）
-  - `flutter test`：50 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、两个确认框；深色切换测试检查过渡中途 Material 与 M3E 颜色一致
+  - `flutter test`：56 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、两个确认框、代理集（展开并健康检查）；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -84,12 +85,11 @@
 - [ ] iOS 上 emoji 显示为方块（见已知问题）
 - [ ] 连接页：排序选项
 - [ ] 规则启停（`PATCH /rules/disable`）
-- [ ] 代理集（Provider）管理页面：数据层已完成（`MihomoApi.proxyProviders` / `updateProxyProvider` / `healthCheckProxyProvider`，含 mock），只差界面
 - [ ] 内核操作：重启、升级
 - [ ] M4 打磨：宽屏列表-详情双栏、键盘快捷键、右键菜单
 
 ### 路线图
-- **M4 打磨：** 代理集（Provider）管理、键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
+- **M4 打磨：** 键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
 - **M5 发布：** 图标与启动屏、各平台打包、CI（analyze / test / `build web --wasm`）
 
 ### 已知问题 / 技术债
@@ -208,7 +208,7 @@ lib/
 │   ├── l10n.dart             # context.l10n 扩展
 │   ├── layout/               # WindowSizeClass 断点、pageGutter（内容最大宽度与两侧留白）、EqualHeightRow（同排卡片等高）
 │   ├── utils/                # 格式化（字节、速率、时长）等
-│   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、搜索框
+│   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、搜索框、Reveal / SpringReveal（弹簧展开）
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
@@ -243,7 +243,7 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 - 新增或修改端点时，要同时更新 `MihomoApi` 接口、两个实现以及 `test/` 里的解析测试。
 
 ### 5.5 开发数据（mock data）
-- 开发和测试都用**应用内的 mock 数据**：`lib/core/mihomo/mock/` 里的 `MockMihomoApi` 提供示例的策略组、节点、规则、连接，并模拟实时流（流量、内存、日志、连接），对选择节点、切换模式等操作也会在内存中生效。
+- 开发和测试都用**应用内的 mock 数据**：`lib/core/mihomo/mock/` 里的 `MockMihomoApi` 提供示例的策略组、节点、代理集（带订阅流量的 HTTP、File，以及内核隐式的 `Compatible`）、规则、连接，并模拟实时流（流量、内存、日志、连接），对选择节点、切换模式等操作也会在内存中生效。
 - Debug 构建里，欢迎页和后端列表会提供「Mock 数据」后端（`BackendProfile.isMock`），Release 构建中不显示。
 - **不要**搭建模拟服务器或其他额外的开发服务；需要新的场景时，扩充 mock 数据即可。
 - mock 数据的 JSON 形状要和真实 Mihomo 响应一致（走同一套 `fromJson`），这样它也能作为解析测试的 fixture。

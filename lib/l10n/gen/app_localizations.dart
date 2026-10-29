@@ -542,6 +542,54 @@ abstract class AppLocalizations {
   /// **'Fixed'**
   String get proxiesFixed;
 
+  /// No description provided for @proxiesTabGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get proxiesTabGroups;
+
+  /// No description provided for @proxiesTabProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get proxiesTabProviders;
+
+  /// No description provided for @proxyProvidersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 provider} other{{count} providers}}'**
+  String proxyProvidersCount(int count);
+
+  /// No description provided for @proxyProviderHealthCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Health check'**
+  String get proxyProviderHealthCheck;
+
+  /// No description provided for @proxyProviderTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} / {total}'**
+  String proxyProviderTraffic(String used, String total);
+
+  /// No description provided for @proxyProviderUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} used'**
+  String proxyProviderUsed(String used);
+
+  /// No description provided for @proxyProviderExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String proxyProviderExpires(String date);
+
+  /// No description provided for @proxyProviderExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get proxyProviderExpired;
+
   /// No description provided for @actionExpand.
   ///
   /// In en, this message translates to:
@@ -698,11 +746,11 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 rule} other{{count} rules}}'**
   String ruleProviderRuleCount(int count);
 
-  /// No description provided for @ruleProviderUpdatedAt.
+  /// No description provided for @providerUpdatedAt.
   ///
   /// In en, this message translates to:
   /// **'Updated {time}'**
-  String ruleProviderUpdatedAt(String time);
+  String providerUpdatedAt(String time);
 
   /// No description provided for @logsEmpty.
   ///

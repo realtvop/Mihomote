@@ -243,6 +243,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get proxiesFixed => '已固定';
 
   @override
+  String get proxiesTabGroups => '策略组';
+
+  @override
+  String get proxiesTabProviders => '代理集';
+
+  @override
+  String proxyProvidersCount(int count) {
+    return '$count 个代理集';
+  }
+
+  @override
+  String get proxyProviderHealthCheck => '健康检查';
+
+  @override
+  String proxyProviderTraffic(String used, String total) {
+    return '$used / $total';
+  }
+
+  @override
+  String proxyProviderUsed(String used) {
+    return '已用 $used';
+  }
+
+  @override
+  String proxyProviderExpires(String date) {
+    return '$date 到期';
+  }
+
+  @override
+  String get proxyProviderExpired => '已过期';
+
+  @override
   String get actionExpand => '展开';
 
   @override
@@ -329,7 +361,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String ruleProviderUpdatedAt(String time) {
+  String providerUpdatedAt(String time) {
     return '更新于 $time';
   }
 

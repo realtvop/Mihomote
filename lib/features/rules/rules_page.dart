@@ -230,7 +230,7 @@ class _RuleProviderItem extends ConsumerWidget {
         '${provider.behavior} · ${provider.vehicleType}',
         l10n.ruleProviderRuleCount(provider.ruleCount),
         if (updatedAt != null)
-          l10n.ruleProviderUpdatedAt(
+          l10n.providerUpdatedAt(
             DateFormat.yMd(locale).add_Hm().format(updatedAt.toLocal()),
           ),
       ].join(' · '),

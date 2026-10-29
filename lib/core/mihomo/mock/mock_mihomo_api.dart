@@ -19,6 +19,10 @@ class MockMihomoApi implements MihomoApi {
   final Map<String, JsonMap> _proxies = {};
   final List<JsonMap> _connections = [];
   int _connectionSeq = 0;
+  final Map<String, DateTime> _providerUpdatedAt = {
+    'Subscription': DateTime.now().subtract(const Duration(hours: 3)),
+    'Backup': DateTime.now().subtract(const Duration(days: 2)),
+  };
   int _uploadTotal = 182 * 1024 * 1024;
   int _downloadTotal = 3 * 1024 * 1024 * 1024 + 412 * 1024 * 1024;
 
@@ -203,20 +207,31 @@ class MockMihomoApi implements MihomoApi {
     return result;
   }
 
+  /// Nodes per provider; the last two come from a local file.
+  static final _providerNodes = {
+    'Subscription': [
+      for (final node in mockNodes.take(mockNodes.length - 2)) node.name,
+    ],
+    'Backup': [
+      for (final node in mockNodes.skip(mockNodes.length - 2)) node.name,
+    ],
+  };
+
   @override
   Future<List<ProxyProvider>> proxyProviders() async {
     await _wait();
+    JsonMap provider(String name, String vehicle, [JsonMap? subscription]) => {
+      'name': name,
+      'type': 'Proxy',
+      'vehicleType': vehicle,
+      'testUrl': defaultDelayTestUrl,
+      'updatedAt': _providerUpdatedAt[name]?.toUtc().toIso8601String(),
+      'subscriptionInfo': ?subscription,
+      'proxies': [for (final node in _providerNodes[name]!) _proxies[node]],
+    };
     return [
-      ProxyProvider.fromJson({
-        'name': 'Subscription',
-        'type': 'Proxy',
-        'vehicleType': 'HTTP',
-        'testUrl': defaultDelayTestUrl,
-        'updatedAt': DateTime.now()
-            .subtract(const Duration(hours: 3))
-            .toUtc()
-            .toIso8601String(),
-        'subscriptionInfo': {
+      ProxyProvider.fromJson(
+        provider('Subscription', 'HTTP', {
           'Upload': 2 * 1024 * 1024 * 1024,
           'Download': 86 * 1024 * 1024 * 1024,
           'Total': 200 * 1024 * 1024 * 1024,
@@ -225,21 +240,32 @@ class MockMihomoApi implements MihomoApi {
                   .add(const Duration(days: 23))
                   .millisecondsSinceEpoch ~/
               1000,
-        },
-        'proxies': [for (final node in mockNodes) _proxies[node.name]],
+        }),
+      ),
+      ProxyProvider.fromJson(provider('Backup', 'File')),
+      // The core's implicit provider for inline proxies; the UI hides it.
+      ProxyProvider.fromJson({
+        'name': 'default',
+        'type': 'Proxy',
+        'vehicleType': 'Compatible',
+        'proxies': [for (final name in mockBuiltins.keys) _proxies[name]],
       }),
     ];
   }
 
   @override
-  Future<void> updateProxyProvider(String name) =>
-      _wait(const Duration(seconds: 1));
+  Future<void> updateProxyProvider(String name) async {
+    await _wait(const Duration(seconds: 1));
+    if (_providerUpdatedAt.containsKey(name)) {
+      _providerUpdatedAt[name] = DateTime.now();
+    }
+  }
 
   @override
   Future<void> healthCheckProxyProvider(String name) async {
     await _wait(const Duration(seconds: 2));
-    for (final node in mockNodes) {
-      _test(node.name);
+    for (final node in _providerNodes[name] ?? const <String>[]) {
+      _test(node);
     }
   }
 

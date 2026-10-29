@@ -257,6 +257,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proxiesFixed => 'Fixed';
 
   @override
+  String get proxiesTabGroups => 'Groups';
+
+  @override
+  String get proxiesTabProviders => 'Providers';
+
+  @override
+  String proxyProvidersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count providers',
+      one: '1 provider',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get proxyProviderHealthCheck => 'Health check';
+
+  @override
+  String proxyProviderTraffic(String used, String total) {
+    return '$used / $total';
+  }
+
+  @override
+  String proxyProviderUsed(String used) {
+    return '$used used';
+  }
+
+  @override
+  String proxyProviderExpires(String date) {
+    return 'Expires $date';
+  }
+
+  @override
+  String get proxyProviderExpired => 'Expired';
+
+  @override
   String get actionExpand => 'Expand';
 
   @override
@@ -367,7 +405,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String ruleProviderUpdatedAt(String time) {
+  String providerUpdatedAt(String time) {
     return 'Updated $time';
   }
 

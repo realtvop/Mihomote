@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/shell/page_scaffold.dart';
@@ -6,17 +7,31 @@ import '../../core/mihomo/mihomo_api.dart';
 import '../../core/state/core_providers.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
+import '../../shared/widgets/reveal.dart';
 import '../../shared/widgets/status_views.dart';
 import 'proxies_providers.dart';
 import 'widgets/proxy_group_card.dart';
+import 'widgets/proxy_provider_card.dart';
 
-class ProxiesPage extends ConsumerWidget {
+enum _ProxiesTab { groups, providers }
+
+class ProxiesPage extends ConsumerStatefulWidget {
   const ProxiesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProxiesPage> createState() => _ProxiesPageState();
+}
+
+class _ProxiesPageState extends ConsumerState<ProxiesPage> {
+  _ProxiesTab _tab = _ProxiesTab.groups;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final proxies = ref.watch(proxiesProvider);
+    // Many configs have no providers; then there is nothing to switch to.
+    final providers = ref.watch(proxyProvidersProvider).value ?? const [];
+    final tab = providers.isEmpty ? _ProxiesTab.groups : _tab;
     // GLOBAL only matters (and is only shown) in global mode.
     final globalMode = ref.watch(
       coreConfigProvider.select((c) => c.value?.mode == TunnelMode.global),
@@ -27,21 +42,63 @@ class ProxiesPage extends ConsumerWidget {
         .length;
     return PageScaffold(
       title: l10n.navProxies,
-      subtitle: groupCount == null ? null : l10n.proxiesGroupCount(groupCount),
-      onRefresh: () => ref.read(proxiesProvider.notifier).reload(),
+      subtitle: switch (tab) {
+        _ProxiesTab.groups =>
+          groupCount == null ? null : l10n.proxiesGroupCount(groupCount),
+        _ProxiesTab.providers => l10n.proxyProvidersCount(providers.length),
+      },
+      onRefresh: () => switch (tab) {
+        _ProxiesTab.groups => ref.read(proxiesProvider.notifier).reload(),
+        _ProxiesTab.providers =>
+          ref.read(proxyProvidersProvider.notifier).reload(),
+      },
       slivers: [
-        switch (proxies) {
-          AsyncData(:final value) => _groups(context, value, globalMode),
-          AsyncError(:final error) => SliverFillRemaining(
-            hasScrollBody: false,
-            child: ErrorView(
-              error: error,
-              onRetry: () => ref.invalidate(proxiesProvider),
+        SliverToBoxAdapter(
+          // Springs in when providers arrive instead of shoving the list.
+          child: SpringReveal(
+            visible: providers.isNotEmpty,
+            child: Padding(
+              padding: pageGutter(context).copyWith(top: 4, bottom: 4),
+              child: M3ESegmentedButton<_ProxiesTab>(
+                segments: [
+                  M3ESegment(
+                    value: _ProxiesTab.groups,
+                    label: l10n.proxiesTabGroups,
+                  ),
+                  M3ESegment(
+                    value: _ProxiesTab.providers,
+                    label: l10n.proxiesTabProviders,
+                  ),
+                ],
+                selected: {tab},
+                onSelectionChanged: (selection) =>
+                    setState(() => _tab = selection.first),
+              ),
             ),
           ),
-          _ => const SliverFillRemaining(
-            hasScrollBody: false,
-            child: LoadingView(),
+        ),
+        switch (tab) {
+          _ProxiesTab.groups => switch (proxies) {
+            AsyncData(:final value) => _groups(context, value, globalMode),
+            AsyncError(:final error) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: ErrorView(
+                error: error,
+                onRetry: () => ref.invalidate(proxiesProvider),
+              ),
+            ),
+            _ => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: LoadingView(),
+            ),
+          },
+          _ProxiesTab.providers => _cards(
+            context,
+            itemCount: providers.length,
+            itemBuilder: (context, index) => ProxyProviderCard(
+              provider: providers[index],
+              proxies: proxies.value,
+            ),
           ),
         },
       ],
@@ -62,13 +119,25 @@ class ProxiesPage extends ConsumerWidget {
         ),
       );
     }
+    return _cards(
+      context,
+      itemCount: groups.length,
+      itemBuilder: (context, index) =>
+          ProxyGroupCard(state: state, group: groups[index]),
+    );
+  }
+
+  Widget _cards(
+    BuildContext context, {
+    required int itemCount,
+    required NullableIndexedWidgetBuilder itemBuilder,
+  }) {
     return SliverPadding(
       padding: pageGutter(context).copyWith(top: 8),
       sliver: SliverList.separated(
-        itemCount: groups.length,
+        itemCount: itemCount,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) =>
-            ProxyGroupCard(state: state, group: groups[index]),
+        itemBuilder: itemBuilder,
       ),
     );
   }

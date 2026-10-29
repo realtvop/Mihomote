@@ -84,6 +84,14 @@
   "proxiesEmpty": "没有策略组",
   "proxiesGroupCount": "{count} 个代理组",
   "proxiesFixed": "已固定",
+  "proxiesTabGroups": "策略组",
+  "proxiesTabProviders": "代理集",
+  "proxyProvidersCount": "{count} 个代理集",
+  "proxyProviderHealthCheck": "健康检查",
+  "proxyProviderTraffic": "{used} / {total}",
+  "proxyProviderUsed": "已用 {used}",
+  "proxyProviderExpires": "{date} 到期",
+  "proxyProviderExpired": "已过期",
   "actionExpand": "展开",
   "actionCollapse": "收起",
 
@@ -112,7 +120,7 @@
   "ruleProvidersEmpty": "没有规则集",
   "ruleProvidersCount": "{count} 个规则集",
   "ruleProviderRuleCount": "{count} 条规则",
-  "ruleProviderUpdatedAt": "更新于 {time}",
+  "providerUpdatedAt": "更新于 {time}",
 
   "logsEmpty": "等待日志中…",
   "logsSearchHint": "筛选日志",

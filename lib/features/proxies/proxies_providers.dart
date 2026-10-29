@@ -127,8 +127,64 @@ final proxiesProvider = AsyncNotifierProvider<ProxiesNotifier, ProxiesState>(
   ProxiesNotifier.new,
 );
 
-/// Names of groups and nodes with a delay test in flight.
-class DelayTestingNotifier extends Notifier<Set<String>> {
+/// Proxy providers, without the core's implicit provider for inline proxies.
+class ProxyProvidersNotifier extends AsyncNotifier<List<ProxyProvider>> {
+  MihomoApi get _api => ref.read(mihomoApiProvider);
+
+  @override
+  Future<List<ProxyProvider>> build() async =>
+      _visible(await ref.watch(mihomoApiProvider).proxyProviders());
+
+  static List<ProxyProvider> _visible(List<ProxyProvider> providers) => [
+    for (final provider in providers)
+      if (!provider.isInline) provider,
+  ];
+
+  /// Re-fetches without flashing a loading state.
+  Future<void> reload() async {
+    state = AsyncData(_visible(await _api.proxyProviders()));
+  }
+
+  /// Re-downloads [name]. Its nodes may change, so the groups reload too.
+  Future<void> updateProvider(String name) =>
+      _busy(updatingProxyProvidersProvider, name, () async {
+        await _api.updateProxyProvider(name);
+        await _reloadAll();
+      });
+
+  /// Tests every node of [name]; the core records the results in the nodes'
+  /// histories, which both tabs read.
+  Future<void> healthCheck(String name) =>
+      _busy(checkingProxyProvidersProvider, name, () async {
+        await _api.healthCheckProxyProvider(name);
+        await _reloadAll();
+      });
+
+  Future<void> _reloadAll() async {
+    await Future.wait([reload(), ref.read(proxiesProvider.notifier).reload()]);
+  }
+
+  Future<void> _busy(
+    NotifierProvider<BusyNamesNotifier, Set<String>> provider,
+    String name,
+    Future<void> Function() action,
+  ) async {
+    final busy = ref.read(provider.notifier)..add(name);
+    try {
+      await action();
+    } finally {
+      busy.remove(name);
+    }
+  }
+}
+
+final proxyProvidersProvider =
+    AsyncNotifierProvider<ProxyProvidersNotifier, List<ProxyProvider>>(
+      ProxyProvidersNotifier.new,
+    );
+
+/// Names with an operation in flight, for per-item loading indicators.
+class BusyNamesNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
 
@@ -137,22 +193,36 @@ class DelayTestingNotifier extends Notifier<Set<String>> {
   void remove(String name) => state = {...state}..remove(name);
 }
 
-final delayTestingProvider =
-    NotifierProvider<DelayTestingNotifier, Set<String>>(
-      DelayTestingNotifier.new,
-    );
+/// Groups and nodes with a delay test in flight.
+final delayTestingProvider = NotifierProvider<BusyNamesNotifier, Set<String>>(
+  BusyNamesNotifier.new,
+);
 
-/// Which group cards are expanded, kept across tab switches.
-class ExpandedGroupsNotifier extends Notifier<Set<String>> {
+/// Proxy providers being re-downloaded.
+final updatingProxyProvidersProvider =
+    NotifierProvider<BusyNamesNotifier, Set<String>>(BusyNamesNotifier.new);
+
+/// Proxy providers with a health check in flight.
+final checkingProxyProvidersProvider =
+    NotifierProvider<BusyNamesNotifier, Set<String>>(BusyNamesNotifier.new);
+
+/// Which cards are expanded, kept across tab switches.
+class ExpandedNamesNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
 
-  void toggle(String group) => state = state.contains(group)
-      ? ({...state}..remove(group))
-      : {...state, group};
+  void toggle(String name) => state = state.contains(name)
+      ? ({...state}..remove(name))
+      : {...state, name};
 }
 
 final expandedGroupsProvider =
-    NotifierProvider<ExpandedGroupsNotifier, Set<String>>(
-      ExpandedGroupsNotifier.new,
+    NotifierProvider<ExpandedNamesNotifier, Set<String>>(
+      ExpandedNamesNotifier.new,
+    );
+
+/// Separate from groups: a provider and a group may share a name.
+final expandedProxyProvidersProvider =
+    NotifierProvider<ExpandedNamesNotifier, Set<String>>(
+      ExpandedNamesNotifier.new,
     );

@@ -141,4 +141,37 @@ void main() {
     expect(rule.hitCount, 3);
     expect(rule.size, -1);
   });
+
+  test('ProxyProvider reads subscription usage and the inline marker', () {
+    final provider = ProxyProvider.fromJson({
+      'name': 'Sub',
+      'vehicleType': 'HTTP',
+      'updatedAt': '2026-10-29T08:00:00Z',
+      'subscriptionInfo': {
+        'Upload': 1,
+        'Download': 2,
+        'Total': 10,
+        'Expire': 1798761600,
+      },
+      'proxies': [
+        {'name': 'HK', 'type': 'Vless', 'history': []},
+      ],
+    });
+    expect(provider.isInline, isFalse);
+    expect(provider.proxies.single.name, 'HK');
+    expect(provider.updatedAt, DateTime.utc(2026, 10, 29, 8));
+    expect(provider.subscription?.total, 10);
+    expect(
+      provider.subscription?.expire,
+      DateTime.fromMillisecondsSinceEpoch(1798761600 * 1000),
+    );
+
+    final inline = ProxyProvider.fromJson({
+      'name': 'default',
+      'vehicleType': 'Compatible',
+      'subscriptionInfo': {'Expire': 0},
+    });
+    expect(inline.isInline, isTrue);
+    expect(inline.subscription?.expire, isNull);
+  });
 }
