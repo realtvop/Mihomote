@@ -110,7 +110,7 @@ void main() {
     expect(snapshot.downloadTotal, 2048);
     expect(c.metadata.displayHost, 'sniffed.example:443');
     expect(c.metadata.source, '192.168.1.10:50000');
-    expect(c.chainLabel, 'Proxy → Auto → HK');
+    expect(c.chainLabel, 'Proxy › Auto › HK');
     expect(c.ruleLabel, 'DomainSuffix(example)');
     expect(c.start, isNotNull);
   });

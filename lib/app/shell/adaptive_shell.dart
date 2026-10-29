@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/window_size_class.dart';
 import '../router.dart';
+import '../theme/semantic_colors.dart';
 import 'backend_switcher.dart';
 import 'shell_scope.dart';
 
@@ -93,6 +94,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         bottomNavigationBar: settingsFullScreen
             ? null
             : M3ENavigationBar(
+                backgroundColor: Theme.of(context).colorScheme.card,
                 selectedIndex: index,
                 onDestinationSelected: _goBranch,
                 destinations: [

@@ -58,7 +58,11 @@ class BackendSwitcher extends ConsumerWidget {
               message: l10n.backendSwitcherTooltip,
               child: wide
                   ? _WideTrigger(profile: active, onTap: toggle)
-                  : _BackendAvatar(profile: active, onTap: toggle),
+                  : _BackendAvatar(
+                      profile: active,
+                      ringColor: Theme.of(context).colorScheme.canvas,
+                      onTap: toggle,
+                    ),
             );
           },
         );
@@ -97,9 +101,16 @@ class _ProfileLabel extends StatelessWidget {
 
 /// Initial inside an expressive shape, with a dot for connection health.
 class _BackendAvatar extends ConsumerWidget {
-  const _BackendAvatar({required this.profile, this.onTap});
+  const _BackendAvatar({
+    required this.profile,
+    required this.ringColor,
+    this.onTap,
+  });
 
   final BackendProfile profile;
+
+  /// The background behind the avatar, used to cut the health dot out.
+  final Color ringColor;
   final VoidCallback? onTap;
 
   @override
@@ -131,12 +142,12 @@ class _BackendAvatar extends ConsumerWidget {
                 kind: M3EShapeKind.cookie4Sided,
                 width: 36,
                 height: 36,
-                color: scheme.tertiaryContainer,
+                color: scheme.primaryContainer,
                 child: Center(
                   child: Text(
                     initial,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: scheme.onTertiaryContainer,
+                      color: scheme.onPrimaryContainer,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -151,7 +162,7 @@ class _BackendAvatar extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: dotColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: scheme.surface, width: 2),
+                    border: Border.all(color: ringColor, width: 2),
                   ),
                 ),
               ),
@@ -173,7 +184,7 @@ class _WideTrigger extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surfaceContainerHigh,
+      color: scheme.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -182,7 +193,7 @@ class _WideTrigger extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
           child: Row(
             children: [
-              _BackendAvatar(profile: profile),
+              _BackendAvatar(profile: profile, ringColor: scheme.card),
               const SizedBox(width: 4),
               Expanded(child: _ProfileLabel(profile: profile)),
               Icon(

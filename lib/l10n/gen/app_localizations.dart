@@ -458,23 +458,11 @@ abstract class AppLocalizations {
   /// **'Proxy mode'**
   String get overviewMode;
 
-  /// No description provided for @overviewRealtimeTraffic.
-  ///
-  /// In en, this message translates to:
-  /// **'Real-time traffic'**
-  String get overviewRealtimeTraffic;
-
   /// No description provided for @overviewCore.
   ///
   /// In en, this message translates to:
   /// **'Core'**
   String get overviewCore;
-
-  /// No description provided for @overviewQuickActions.
-  ///
-  /// In en, this message translates to:
-  /// **'Quick actions'**
-  String get overviewQuickActions;
 
   /// No description provided for @modeRule.
   ///
@@ -542,6 +530,12 @@ abstract class AppLocalizations {
   /// **'No proxy groups'**
   String get proxiesEmpty;
 
+  /// No description provided for @proxiesGroupCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group} other{{count} groups}}'**
+  String proxiesGroupCount(int count);
+
   /// No description provided for @proxiesFixed.
   ///
   /// In en, this message translates to:
@@ -596,11 +590,11 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 connection} other{{count} connections}}'**
   String connectionsCount(int count);
 
-  /// No description provided for @connectionsPaused.
+  /// No description provided for @statusPaused.
   ///
   /// In en, this message translates to:
   /// **'Paused'**
-  String get connectionsPaused;
+  String get statusPaused;
 
   /// No description provided for @connectionDetails.
   ///
@@ -662,12 +656,6 @@ abstract class AppLocalizations {
   /// **'Duration'**
   String get connectionDuration;
 
-  /// No description provided for @connectionTraffic.
-  ///
-  /// In en, this message translates to:
-  /// **'Traffic'**
-  String get connectionTraffic;
-
   /// No description provided for @rulesTabRules.
   ///
   /// In en, this message translates to:
@@ -697,6 +685,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No rule providers'**
   String get ruleProvidersEmpty;
+
+  /// No description provided for @ruleProvidersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 rule provider} other{{count} rule providers}}'**
+  String ruleProvidersCount(int count);
 
   /// No description provided for @ruleProviderRuleCount.
   ///

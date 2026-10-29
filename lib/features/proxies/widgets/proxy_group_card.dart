@@ -3,31 +3,20 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:motor/motor.dart';
 
+import '../../../app/theme/semantic_colors.dart';
 import '../../../core/mihomo/mihomo_api.dart';
 import '../../../shared/l10n.dart';
 import '../../../shared/widgets/status_views.dart';
 import '../proxies_providers.dart';
 import 'delay_label.dart';
 
-/// One proxy group: header with current selection and a latency test, and an
-/// expandable grid of members.
+/// One proxy group: its name and current selection while collapsed, a grid
+/// of members while expanded.
 class ProxyGroupCard extends ConsumerWidget {
   const ProxyGroupCard({super.key, required this.state, required this.group});
 
   final ProxiesState state;
   final ProxyNode group;
-
-  static (M3EShapeKind, IconData) _look(ProxyGroupType? type) => switch (type) {
-    ProxyGroupType.selector => (
-      M3EShapeKind.cookie4Sided,
-      Icons.touch_app_rounded,
-    ),
-    ProxyGroupType.urlTest => (M3EShapeKind.sunny, Icons.bolt_rounded),
-    ProxyGroupType.fallback => (M3EShapeKind.clover4Leaf, Icons.shield_rounded),
-    ProxyGroupType.loadBalance => (M3EShapeKind.flower, Icons.balance_rounded),
-    ProxyGroupType.relay => (M3EShapeKind.arrow, Icons.route_rounded),
-    null => (M3EShapeKind.circle, Icons.hub_rounded),
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,7 +30,6 @@ class ProxyGroupCard extends ConsumerWidget {
       delayTestingProvider.select((s) => s.contains(group.name)),
     );
     final notifier = ref.read(proxiesProvider.notifier);
-    final (shape, icon) = _look(group.groupType);
 
     Future<void> run(Future<void> Function() action) async {
       try {
@@ -51,64 +39,45 @@ class ProxyGroupCard extends ConsumerWidget {
       }
     }
 
-    final header = InkWell(
-      onTap: () => ref.read(expandedGroupsProvider.notifier).toggle(group.name),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        child: Row(
-          children: [
-            M3EShapeContainer(
-              kind: shape,
-              width: 44,
-              height: 44,
-              color: scheme.primaryContainer,
-              child: Icon(icon, size: 22, color: scheme.onPrimaryContainer),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    group.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      group.type,
-                      l10n.proxiesNodeCount(group.all.length),
-                      if (group.now != null) group.now!,
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (group.fixed != null) ...[
-              Tooltip(
-                message: l10n.proxiesFixed,
-                child: Icon(
-                  Icons.push_pin_rounded,
-                  size: 18,
-                  color: scheme.tertiary,
+    void toggle() =>
+        ref.read(expandedGroupsProvider.notifier).toggle(group.name);
+
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 8, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: M3ETheme.of(context).typography.emphasized.titleMedium,
                 ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            DelayLabel(delay: state.delayOf(group.name, url: group.testUrl)),
-            const SizedBox(width: 4),
-            SizedBox.square(
-              dimension: 48,
-              child: Center(
+                Text(
+                  [
+                    group.type,
+                    l10n.proxiesNodeCount(group.all.length),
+                    if (group.fixed != null) l10n.proxiesFixed,
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox.square(
+            dimension: 48,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
                 child: testing
-                    ? const M3ELoadingIndicator(size: 28)
+                    ? const M3ELoadingIndicator(size: 24)
                     : M3EIconButton(
                         icon: const Icon(Icons.speed_rounded),
                         variant: M3EIconButtonVariant.standard,
@@ -118,52 +87,61 @@ class ProxyGroupCard extends ConsumerWidget {
                       ),
               ),
             ),
-            AnimatedRotation(
-              turns: expanded ? 0.5 : 0,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
+          ),
+          AnimatedRotation(
+            turns: expanded ? 0.5 : 0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
               child: Icon(
                 Icons.expand_more_rounded,
                 color: scheme.onSurfaceVariant,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+
+    // Built once per data change, not per animation frame: the motion
+    // builder below only re-clips them.
+    final summary = InkWell(
+      onTap: toggle,
+      child: _Summary(state: state, group: group),
+    );
+    final grid = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: _MemberGrid(
+        state: state,
+        group: group,
+        onSelect: (name) => run(() => notifier.select(group.name, name)),
+        onTest: (name) =>
+            run(() => notifier.testNode(name, url: group.testUrl)),
       ),
     );
 
     return Material(
-      color: scheme.surfaceContainer,
+      color: scheme.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          header,
+          InkWell(onTap: toggle, child: header),
           SingleMotionBuilder(
             value: expanded ? 1 : 0,
             motion: const MaterialSpringMotion.standardSpatialDefault(),
             builder: (context, t, _) {
-              if (t <= 0.001 && !expanded) {
-                return _DotPreview(state: state, group: group);
-              }
-              return ClipRect(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  heightFactor: t.clamp(0.0, 1.0),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: _MemberGrid(
-                      state: state,
-                      group: group,
-                      onSelect: (name) =>
-                          run(() => notifier.select(group.name, name)),
-                      onTest: (name) => run(
-                        () => notifier.testNode(name, url: group.testUrl),
-                      ),
-                    ),
-                  ),
-                ),
+              final open = t.clamp(0.0, 1.0);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (open < 0.999 || !expanded)
+                    _Reveal(factor: 1 - open, child: summary),
+                  if (open > 0.001 || expanded)
+                    _Reveal(factor: open, child: grid),
+                ],
               );
             },
           ),
@@ -173,27 +151,58 @@ class ProxyGroupCard extends ConsumerWidget {
   }
 }
 
-/// Collapsed summary: one latency dot per member.
-class _DotPreview extends StatelessWidget {
-  const _DotPreview({required this.state, required this.group});
+/// Shows the top [factor] of [child], fading with it.
+class _Reveal extends StatelessWidget {
+  const _Reveal({required this.factor, required this.child});
+
+  final double factor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: factor,
+        child: Opacity(opacity: factor, child: child),
+      ),
+    );
+  }
+}
+
+/// Collapsed body: just the current selection and its latency.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.state, required this.group});
 
   final ProxiesState state;
   final ProxyNode group;
 
   @override
   Widget build(BuildContext context) {
-    final members = group.all.take(64);
+    final now = group.now;
+    if (now == null) return const SizedBox(width: double.infinity);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+      child: Row(
         children: [
-          for (final name in members)
-            DelayDot(
-              delay: state.delayOf(name, url: group.testUrl),
-              selected: name == group.now,
+          Icon(
+            Icons.subdirectory_arrow_right_rounded,
+            size: 18,
+            color: scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              now,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyLarge,
             ),
+          ),
+          const SizedBox(width: 12),
+          DelayLabel(delay: state.delayOf(now, url: group.testUrl)),
         ],
       ),
     );
@@ -219,7 +228,7 @@ class _MemberGrid extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const spacing = 8.0;
-        final columns = (constraints.maxWidth / 176).floor().clamp(2, 8);
+        final columns = (constraints.maxWidth / 180).floor().clamp(2, 8);
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         return Wrap(
@@ -269,21 +278,20 @@ class _MemberTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final foreground = selected
-        ? scheme.onSecondaryContainer
-        : scheme.onSurface;
+    final foreground = selected ? scheme.onPrimaryContainer : scheme.onSurface;
+    final muted = selected
+        ? scheme.onPrimaryContainer.withValues(alpha: 0.78)
+        : scheme.onSurfaceVariant;
 
     // Long-press (touch) and right-click (mouse) both test this member.
     return GestureDetector(
       onSecondaryTapUp: (TapUpDetails _) => onTest(),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutBack,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: selected
-              ? scheme.secondaryContainer
-              : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(selected ? 24 : 14),
+          color: selected ? scheme.primaryContainer : scheme.cardInset,
+          borderRadius: BorderRadius.circular(selected ? 22 : 14),
         ),
         clipBehavior: Clip.antiAlias,
         child: Material(
@@ -296,30 +304,16 @@ class _MemberTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: foreground,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (selected)
-                        Icon(
-                          Icons.check_circle_rounded,
-                          size: 18,
-                          color: scheme.secondary,
-                        ),
-                    ],
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Expanded(
@@ -328,7 +322,7 @@ class _MemberTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                            color: muted,
                           ),
                         ),
                       ),
@@ -336,6 +330,13 @@ class _MemberTile extends StatelessWidget {
                         const SizedBox.square(
                           dimension: 16,
                           child: M3ELoadingIndicator(size: 16),
+                        )
+                      else if (selected)
+                        // Colored text wouldn't read on the primary fill.
+                        DelayBadge(
+                          delay: delay,
+                          color: muted,
+                          style: theme.textTheme.labelSmall,
                         )
                       else
                         DelayLabel(

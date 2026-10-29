@@ -199,13 +199,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get overviewMode => 'Proxy mode';
 
   @override
-  String get overviewRealtimeTraffic => 'Real-time traffic';
-
-  @override
   String get overviewCore => 'Core';
-
-  @override
-  String get overviewQuickActions => 'Quick actions';
 
   @override
   String get modeRule => 'Rule';
@@ -247,6 +241,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proxiesEmpty => 'No proxy groups';
+
+  @override
+  String proxiesGroupCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count groups',
+      one: '1 group',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get proxiesFixed => 'Fixed';
@@ -292,7 +297,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get connectionsPaused => 'Paused';
+  String get statusPaused => 'Paused';
 
   @override
   String get connectionDetails => 'Connection details';
@@ -325,9 +330,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectionDuration => 'Duration';
 
   @override
-  String get connectionTraffic => 'Traffic';
-
-  @override
   String get rulesTabRules => 'Rules';
 
   @override
@@ -341,6 +343,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ruleProvidersEmpty => 'No rule providers';
+
+  @override
+  String ruleProvidersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rule providers',
+      one: '1 rule provider',
+    );
+    return '$_temp0';
+  }
 
   @override
   String ruleProviderRuleCount(int count) {

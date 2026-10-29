@@ -52,6 +52,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     return PageScaffold(
       title: l10n.navLogs,
+      subtitle: [
+        '${l10n.logsLevelTooltip} · ${logLevelLabel(l10n, level)}',
+        if (state.paused) l10n.statusPaused,
+      ].join(' · '),
       actions: [
         MenuAnchor(
           menuChildren: [
@@ -120,7 +124,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             padding: pageGutter(context),
             sliver: SliverList.separated(
               itemCount: entries.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 4),
+              separatorBuilder: (_, _) => const SizedBox(height: 2),
               itemBuilder: (context, index) => _LogTile(
                 entry: entries[index],
                 first: index == 0,
@@ -150,59 +154,43 @@ class _LogTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final (background, foreground) = switch (entry.level) {
-      LogLevel.error => (scheme.errorContainer, scheme.onErrorContainer),
-      LogLevel.warning => (
-        scheme.warning.withValues(alpha: 0.18),
-        scheme.onSurface,
-      ),
-      LogLevel.debug => (
-        scheme.surfaceContainerHighest,
-        scheme.onSurfaceVariant,
-      ),
-      _ => (scheme.secondaryContainer, scheme.onSecondaryContainer),
+    // Only problems get color; info and debug stay quiet.
+    final levelColor = switch (entry.level) {
+      LogLevel.error => scheme.error,
+      LogLevel.warning => scheme.warning,
+      LogLevel.debug => scheme.outline,
+      _ => scheme.onSurfaceVariant,
     };
     // Segmented-list corners: large at the ends of the group, small between.
     final radius = BorderRadius.vertical(
-      top: Radius.circular(first ? 20 : 6),
-      bottom: Radius.circular(last ? 20 : 6),
+      top: Radius.circular(first ? 20 : 4),
+      bottom: Radius.circular(last ? 20 : 4),
+    );
+    final meta = theme.textTheme.labelMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: radius,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: BoxDecoration(color: scheme.card, borderRadius: radius),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 64,
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(8),
-            ),
+          Text(_time.format(entry.time), style: meta),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 60,
             child: Text(
               logLevelLabel(context.l10n, entry.level),
-              textAlign: TextAlign.center,
               maxLines: 1,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: foreground,
+              overflow: TextOverflow.ellipsis,
+              style: meta?.copyWith(
+                color: levelColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Text(
-            _time.format(entry.time),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: SelectableText(
               entry.payload,

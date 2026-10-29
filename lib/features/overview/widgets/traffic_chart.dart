@@ -2,22 +2,25 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-import '../../../app/theme/semantic_colors.dart';
 import '../../../core/mihomo/mihomo_api.dart';
-import '../../../shared/utils/format.dart';
 
-/// Live download/upload area chart. Each new sample slides in from the right
-/// over one second, and the vertical scale eases toward the new peak, so the
-/// chart flows instead of jumping.
+/// Live download/upload area chart, drawn edge to edge with no axes so it can
+/// sit at the bottom of a card. Each new sample slides in from the right over
+/// one second, and the vertical scale eases toward the new peak, so the chart
+/// flows instead of jumping.
 class TrafficChart extends StatefulWidget {
   const TrafficChart({
     super.key,
     required this.samples,
     required this.capacity,
+    required this.downColor,
+    required this.upColor,
   });
 
   final List<TrafficSample> samples;
   final int capacity;
+  final Color downColor;
+  final Color upColor;
 
   @override
   State<TrafficChart> createState() => _TrafficChartState();
@@ -72,8 +75,6 @@ class _TrafficChartState extends State<TrafficChart>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _progress,
@@ -84,12 +85,8 @@ class _TrafficChartState extends State<TrafficChart>
             capacity: widget.capacity,
             slide: _progress.value,
             peak: _peak,
-            downColor: scheme.downloadColor,
-            upColor: scheme.uploadColor,
-            gridColor: scheme.outlineVariant.withValues(alpha: 0.6),
-            labelStyle: theme.textTheme.labelSmall!.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            downColor: widget.downColor,
+            upColor: widget.upColor,
           ),
         ),
       ),
@@ -105,8 +102,6 @@ class _TrafficPainter extends CustomPainter {
     required this.peak,
     required this.downColor,
     required this.upColor,
-    required this.gridColor,
-    required this.labelStyle,
   });
 
   final List<TrafficSample> samples;
@@ -115,30 +110,14 @@ class _TrafficPainter extends CustomPainter {
   final double peak;
   final Color downColor;
   final Color upColor;
-  final Color gridColor;
-  final TextStyle labelStyle;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = gridColor
-      ..strokeWidth = 1;
-    for (var i = 1; i <= 3; i++) {
-      final y = size.height * i / 4;
-      _dashedLine(canvas, Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final label = TextPainter(
-      text: TextSpan(text: formatSpeed(peak), style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    label.paint(canvas, const Offset(0, 0));
-
     if (samples.length < 2) return;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    _series(canvas, size, (s) => s.up, upColor);
-    _series(canvas, size, (s) => s.down, downColor);
+    _series(canvas, size, (s) => s.down, downColor, fill: 0.42, stroke: 3);
+    _series(canvas, size, (s) => s.up, upColor, fill: 0.18, stroke: 2.5);
     canvas.restore();
   }
 
@@ -146,15 +125,20 @@ class _TrafficPainter extends CustomPainter {
     Canvas canvas,
     Size size,
     int Function(TrafficSample) value,
-    Color color,
-  ) {
+    Color color, {
+    required double fill,
+    required double stroke,
+  }) {
     final step = size.width / (capacity - 2);
     final points = <Offset>[
       for (var i = 0; i < samples.length; i++)
         Offset(
           size.width - (samples.length - 1 - i) * step + (1 - slide) * step,
+          // Keep the stroke inside the clip at zero and at the peak.
           size.height -
-              (value(samples[i]) / peak).clamp(0.0, 1.0) * size.height * 0.92,
+              stroke / 2 -
+              (value(samples[i]) / peak).clamp(0.0, 1.0) *
+                  (size.height * 0.9 - stroke),
         ),
     ];
 
@@ -176,8 +160,8 @@ class _TrafficPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            color.withValues(alpha: 0.32),
-            color.withValues(alpha: 0.02),
+            color.withValues(alpha: fill),
+            color.withValues(alpha: 0),
           ],
         ).createShader(Offset.zero & size),
     );
@@ -186,23 +170,10 @@ class _TrafficPainter extends CustomPainter {
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
+        ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
-  }
-
-  void _dashedLine(Canvas canvas, Offset from, Offset to, Paint paint) {
-    const dash = 4.0, gap = 6.0;
-    var x = from.dx;
-    while (x < to.dx) {
-      canvas.drawLine(
-        Offset(x, from.dy),
-        Offset(math.min(x + dash, to.dx), to.dy),
-        paint,
-      );
-      x += dash + gap;
-    }
   }
 
   @override

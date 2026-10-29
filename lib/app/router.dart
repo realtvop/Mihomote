@@ -11,6 +11,7 @@ import '../features/proxies/proxies_page.dart';
 import '../features/rules/rules_page.dart';
 import '../features/settings/settings_page.dart';
 import 'shell/adaptive_shell.dart';
+import 'shell/branch_transition.dart';
 
 abstract final class AppRoutes {
   static const welcome = '/welcome';
@@ -60,9 +61,14 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, shell) =>
             AdaptiveShell(navigationShell: shell),
+        navigatorContainerBuilder: (context, shell, children) =>
+            BranchFadeThrough(
+              currentIndex: shell.currentIndex,
+              children: children,
+            ),
         branches: [
           branch(AppRoutes.overview, const OverviewPage()),
           branch(AppRoutes.proxies, const ProxiesPage()),

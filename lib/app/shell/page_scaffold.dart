@@ -2,10 +2,12 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../shared/l10n.dart';
+import '../theme/semantic_colors.dart';
 import 'backend_switcher.dart';
 import 'shell_scope.dart';
 
-/// Common page chrome: a collapsing M3E flexible app bar over [slivers].
+/// Common page chrome: a collapsing M3E flexible app bar over [slivers], on
+/// the page canvas.
 ///
 /// In the compact layout it also hosts the backend switcher and the settings
 /// button (the bottom bar has no room for them); in settings it shows a back
@@ -14,6 +16,7 @@ class PageScaffold extends StatelessWidget {
   const PageScaffold({
     super.key,
     required this.title,
+    this.subtitle,
     required this.slivers,
     this.actions = const [],
     this.floatingActionButton,
@@ -23,6 +26,7 @@ class PageScaffold extends StatelessWidget {
   });
 
   final String title;
+  final String? subtitle;
   final List<Widget> slivers;
   final List<Widget> actions;
   final Widget? floatingActionButton;
@@ -42,7 +46,14 @@ class PageScaffold extends StatelessWidget {
       slivers: [
         M3EAppBar.sliver(
           titleText: title,
-          variant: M3EAppBarVariant.mediumFlexible,
+          subtitleText: subtitle,
+          // Long titles must not wrap: the flexible bars have a fixed height.
+          // The large title only gets wide windows; phones (and big text
+          // scales on them) use the medium one.
+          variant: compact
+              ? M3EAppBarVariant.mediumFlexible
+              : M3EAppBarVariant.largeFlexible,
+          backgroundColor: Theme.of(context).colorScheme.canvas,
           leading: leaveSettings == null
               ? null
               : M3EIconButton(

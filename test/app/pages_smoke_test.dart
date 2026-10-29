@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mihomote/app/app.dart';
 import 'package:mihomote/app/router.dart';
@@ -43,6 +44,7 @@ Future<void> _render(
   required bool withMockBackend,
   String? route,
   Future<void> Function(ProviderContainer container)? act,
+  void Function()? verifyMidway,
   void Function()? verify,
 }) async {
   tester.view.physicalSize = size * 2;
@@ -71,6 +73,10 @@ Future<void> _render(
     if (act != null) {
       await act(container);
       await tester.pump();
+      if (verifyMidway != null) {
+        await tester.pump(const Duration(milliseconds: 150));
+        verifyMidway();
+      }
       await tester.pump(const Duration(milliseconds: 500));
     }
 
@@ -112,8 +118,30 @@ void main() {
     }
   }
 
+  // Bottom sheet on compact, side sheet on expanded.
+  for (final MapEntry(key: label, value: size) in _sizes.entries) {
+    testWidgets('connection details open from the list ($label)', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.connections,
+        act: (_) => tester.tap(find.byType(M3EListItem).first),
+        verify: () {
+          expect(find.text('Download'), findsOneWidget);
+          expect(find.text('Upload'), findsOneWidget);
+          // The bundled font has no arrows; they render as boxes on iOS 26
+          // (AGENTS.md §6.7).
+          expect(find.textContaining(RegExp('[←↑→↓]')), findsNothing);
+        },
+      );
+    });
+  }
+
   // Regression: an animated theme switch left a light scaffold under dark
-  // M3E surfaces (see themeAnimationDuration in lib/app/app.dart).
+  // M3E surfaces (see _ThemeTransition in lib/app/app.dart).
   testWidgets('switching to dark mode updates the whole theme', (tester) async {
     await _render(
       tester,
@@ -123,6 +151,17 @@ void main() {
       act: (container) => container
           .read(appSettingsProvider.notifier)
           .setThemeMode(ThemeMode.dark),
+      verifyMidway: () {
+        final context = tester.element(find.byType(SettingsPage));
+        final surface = Theme.of(context).colorScheme.surface;
+        // Actually part-way, and M3E widgets see the same colors.
+        expect(surface.computeLuminance(), inExclusiveRange(0.02, 0.9));
+        expect(M3ETheme.of(context).colorScheme.surface, surface);
+        expect(
+          Theme.of(context).scaffoldBackgroundColor.computeLuminance(),
+          inExclusiveRange(0.02, 0.9),
+        );
+      },
       verify: () {
         final theme = Theme.of(tester.element(find.byType(SettingsPage)));
         expect(theme.colorScheme.brightness, Brightness.dark);

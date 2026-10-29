@@ -97,14 +97,24 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
       content = SliverPadding(
         padding: pageGutter(context),
         sliver: M3EList.sliver(
+          color: Theme.of(context).colorScheme.card,
           itemCount: rows.length,
           itemBuilder: (context, index) => _ConnectionItem(row: rows[index]),
+          // Row taps only work at the list level: an M3EListItem inside an
+          // M3EList ignores its own onTap.
+          onTap: (index) => _showDetails(context, rows[index]),
         ),
       );
     }
 
     return PageScaffold(
       title: l10n.navConnections,
+      subtitle: state.loaded
+          ? [
+              l10n.connectionsCount(state.rows.length),
+              if (state.paused) l10n.statusPaused,
+            ].join(' · ')
+          : null,
       actions: [
         M3EIconButton(
           icon: Icon(
@@ -127,25 +137,10 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
         SliverPadding(
           padding: pageGutter(context).copyWith(top: 4, bottom: 12),
           sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SearchField(
-                  hint: l10n.connectionsSearchHint,
-                  onChanged: (value) =>
-                      setState(() => _query = value.trim().toLowerCase()),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  [
-                    l10n.connectionsCount(state.rows.length),
-                    if (state.paused) l10n.connectionsPaused,
-                  ].join(' · '),
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            child: SearchField(
+              hint: l10n.connectionsSearchHint,
+              onChanged: (value) =>
+                  setState(() => _query = value.trim().toLowerCase()),
             ),
           ),
         ),
@@ -163,56 +158,68 @@ class _ConnectionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = row.connection;
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    const tabular = [FontFeature.tabularFigures()];
-    final udp = c.metadata.network.toLowerCase() == 'udp';
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final speed = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
 
     return M3EListItem(
       headline: c.metadata.displayHost,
+      // Only the node actually used and the matching rule type; the full
+      // chain, rule payload and process are in the details sheet.
       supportingText: [
-        c.chainLabel,
-        c.ruleLabel,
-        if (c.metadata.process.isNotEmpty) c.metadata.process,
+        if (c.chains.isNotEmpty) c.chains.first,
+        c.rule,
       ].join(' · '),
-      leading: M3EShapeContainer(
-        kind: udp ? M3EShapeKind.pill : M3EShapeKind.cookie4Sided,
-        width: 40,
-        height: 40,
-        color: udp ? scheme.tertiaryContainer : scheme.secondaryContainer,
-        child: Center(
-          child: Text(
-            c.metadata.network.toUpperCase(),
-            style: textTheme.labelSmall?.copyWith(
-              color: udp
-                  ? scheme.onTertiaryContainer
-                  : scheme.onSecondaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            '↓ ${formatSpeed(row.downSpeed)}',
-            style: textTheme.labelMedium?.copyWith(
-              color: scheme.downloadColor,
-              fontFeatures: tabular,
-            ),
+          _Speed(
+            icon: Icons.arrow_downward_rounded,
+            label: l10n.overviewDownload,
+            text: formatSpeed(row.downSpeed),
+            style: speed,
           ),
-          Text(
-            '↑ ${formatSpeed(row.upSpeed)}',
-            style: textTheme.labelMedium?.copyWith(
-              color: scheme.uploadColor,
-              fontFeatures: tabular,
-            ),
+          _Speed(
+            icon: Icons.arrow_upward_rounded,
+            label: l10n.overviewUpload,
+            text: formatSpeed(row.upSpeed),
+            style: speed,
           ),
         ],
       ),
-      onTap: () => _showDetails(context, row),
+    );
+  }
+}
+
+/// A speed with a direction icon (the UI font has no arrow characters).
+class _Speed extends StatelessWidget {
+  const _Speed({
+    required this.icon,
+    required this.label,
+    required this.text,
+    this.style,
+  });
+
+  final IconData icon;
+
+  /// Spoken direction, since the icon carries it visually.
+  final String label;
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: style?.color, semanticLabel: label),
+        const SizedBox(width: 2),
+        Text(text, style: style),
+      ],
     );
   }
 }
@@ -255,34 +262,38 @@ class _ConnectionDetails extends ConsumerWidget {
           l10n.connectionDuration,
           formatDuration(l10n, DateTime.now().difference(start)),
         ),
-      (
-        l10n.connectionTraffic,
-        '↓ ${formatBytes(c.download)}  ↑ ${formatBytes(c.upload)}',
-      ),
+      (l10n.overviewDownload, formatBytes(c.download)),
+      (l10n.overviewUpload, formatBytes(c.upload)),
     ];
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (label, value) in entries)
-            _DetailRow(label: label, value: value),
-          const SizedBox(height: 16),
-          M3EButton.tonal(
-            onPressed: () async {
-              try {
-                await ref.read(connectionsProvider.notifier).close(c.id);
-                if (context.mounted) Navigator.of(context).maybePop();
-              } catch (e) {
-                if (context.mounted) showErrorSnackbar(context, e);
-              }
-            },
-            icon: const Icon(Icons.link_off_rounded),
-            label: Text(l10n.connectionsClose),
-          ),
-        ],
+    // The sheet has no Material of its own; the rows' ink needs one. The
+    // scroll view picks up the sheet's primary controller, so dragging the
+    // content resizes the bottom sheet before it scrolls.
+    return Material(
+      type: MaterialType.transparency,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (label, value) in entries)
+              _DetailRow(label: label, value: value),
+            const SizedBox(height: 16),
+            M3EButton.tonal(
+              onPressed: () async {
+                try {
+                  await ref.read(connectionsProvider.notifier).close(c.id);
+                  if (context.mounted) Navigator.of(context).maybePop();
+                } catch (e) {
+                  if (context.mounted) showErrorSnackbar(context, e);
+                }
+              },
+              icon: const Icon(Icons.link_off_rounded),
+              label: Text(l10n.connectionsClose),
+            ),
+          ],
+        ),
       ),
     );
   }

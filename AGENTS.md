@@ -28,7 +28,7 @@
 - [x] Flutter 项目脚手架（6 个平台）、依赖选型（第 3 节）、各平台网络权限配置（§3.4）
 - [x] AGENTS.md / CLAUDE.md
 - [x] **M0 基础设施**
-  - 主题：`lib/app/app.dart`，由 `MaterialApp.router` 加 `M3ETheme` 组成；动态取色加种子色兜底；主题模式支持跟随系统、浅色、深色
+  - 主题：`lib/app/app.dart` + `lib/app/theme/app_theme.dart`，由 `MaterialApp.router`、`AppTheme`（同一种子色生成亮 / 暗两套 M3E 主题）和 `M3EResolvedTheme` 组成；动态取色加种子色兜底；主题模式支持跟随系统、浅色、深色
   - 路由与自适应导航：`lib/app/router.dart`、`lib/app/shell/`
     - 导航形态：底栏 / 收起的 Rail / 展开的 Rail
     - 窄屏下设置页全屏显示，带返回按钮
@@ -58,11 +58,19 @@
   - 主题模式、动态取色、种子色、语言
   - allow-lan、IPv6、日志等级（菜单形式）
   - 关于
+- [x] **UI 改版：极简 + 流畅动效**（用户要求，原则见 §6.0）
+  - 配色：种子色用 fidelity 方案生成（`app_theme.dart`），亮 / 暗两套都由同一种子生成；表面分三层：画布 `canvas`、卡片 `card`、卡内 `cardInset`（`semantic_colors.dart`）
+  - 字体：打包 Google Sans Flex 可变字体（Latin 子集，`assets/fonts/`），走 M3E 可变字体字阶；中文和 emoji 走系统回落（§6.7）
+  - 顶栏：M3E flexible 大标题，标题下显示副标题（后端名、组数、连接数、规则数、日志等级）
+  - 概览：主色实时流量卡（全页唯一色块）+ 统计卡 + 模式卡 + 内核卡；宽屏为错位网格，同排卡片用 `EqualHeightRow` 等高
+  - 代理 / 连接 / 规则 / 日志 / 设置：去掉装饰性形状和彩色徽章，元信息一律弱化显示；选中态是唯一的强调色
+  - 动效：页签切换淡入（`branch_transition.dart`）；深浅色切换渐变（`_ThemeTransition`）；代理组展开用弹簧且不逐帧重建节点网格；去掉常驻旋转装饰
+  - 顺带修复：`M3EList` 里的行点按一直无效（连接详情、切换 / 添加后端、日志等级菜单都打不开，见已知问题）；连接详情 sheet 缺少 Material 祖先、内容超高时溢出
 - [x] **验证**（mock 数据）：
-  - Web（Debug，DDC）：窄屏和宽屏
-  - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单
-  - 编译通过：`flutter build macos --debug`、`flutter build web --wasm`
-  - `flutter test`：36 个测试全部通过
+  - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过）
+  - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
+  - 编译通过：`flutter build web --wasm`（改版后）、`flutter build macos --debug`（改版前）
+  - `flutter test`：38 个测试全部通过（深色切换测试会检查过渡中途 Material 与 M3E 颜色一致；连接详情测试在窄屏 / 宽屏分别点开 bottom sheet / side sheet）
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -70,7 +78,7 @@
 - [ ] iOS 上 emoji 显示为方块（见已知问题）
 - [ ] 连接页：排序选项
 - [ ] 规则启停（`PATCH /rules/disable`）
-- [ ] 代理集（Provider）管理页面
+- [ ] 代理集（Provider）管理页面：数据层已完成（`MihomoApi.proxyProviders` / `updateProxyProvider` / `healthCheckProxyProvider`，含 mock），只差界面
 - [ ] 内核操作：重启、升级
 - [ ] M4 打磨：宽屏列表-详情双栏、键盘快捷键、右键菜单
 
@@ -81,11 +89,16 @@
 ### 已知问题 / 技术债
 - secret 以明文存在 SharedPreferences 里（Web 上就是 localStorage）。之后评估 `flutter_secure_storage`，需要注意 macOS 钥匙串 entitlement 以及 Web/WASM 的兼容性。
 - `M3EMaterialApp` 不支持 Router，`lib/app/app.dart` 里复刻了它的行为（§3.2）。升级 `material_3_expressive` 时要对照检查。
-- `M3EResolvedTheme` 读取父级 Theme 时没有建立依赖，主题过渡动画期间不会重建，结果会出现深色卡片配浅色背景的情况。因此 `themeAnimationDuration` 设为 0，主题即时切换。上游修复后可以恢复过渡动画。
+- `M3EResolvedTheme` 读取父级 Theme 时没有建立依赖，`MaterialApp` 自带的主题过渡动画期间它不会重建，结果会出现深色卡片配浅色背景。因此 `themeAnimationDuration` 设为 0，深浅色切换改由 `app.dart` 里的 `_ThemeTransition` 来做：每帧插值出同一套配色，同时交给 Material 主题和 M3E 主题（冒烟测试会检查过渡中途两边一致）。
+- M3E flexible 顶栏的高度是固定的，标题一旦换行就会溢出。因此 `PageScaffold` 在窄屏用 `mediumFlexible`、宽屏才用 `largeFlexible`；页面标题保持简短。
+- `M3EList` 的行底色取自卡片列表的 variant（filled 时是 `surfaceContainerHighest`），不读 list item 主题。每个 `M3EList` / `M3EList.sliver` 都要传 `color: scheme.card`。
+- `M3EList` 里的 `M3EListItem` 会被当成嵌入项，**它自己的 `onTap` 不生效**。点按要交给列表分发：`M3EList(onTap: (index) => …)`；单行是否可点仍看该行 `M3EListItem` 的 `enabled`。
+- M3E 的 bottom sheet / side sheet 不给内容提供 Material：内容里有 `InkWell` 之类的墨水效果时，要自己包一层 `Material(type: MaterialType.transparency)`。内容可能超出屏幕高度时用 `SingleChildScrollView`，它会接上 sheet 的 `PrimaryScrollController`（先拖动 sheet，再滚动内容）。
+- 可变字体：主题里**不能**写死 `wght` 轴。Flutter 各渲染器在样式没指定 `wght` 时会按 `fontWeight` 设置它；写死后，组件里 `copyWith(fontWeight: …)` 就不再生效（`fonts.dart` 中 `syncWghtToWeight: false`）。
 - `M3EAppBar` 的 `actions` 是在**宽度不受限**的 Row 中布局的。放进 actions 的组件不能用 `Expanded`，也不能依赖 `maxWidth`（`BackendSwitcher` 已经处理了这种情况）。
 - iOS 26.3 模拟器上，Flutter 的系统字体回落失效，中文和 emoji 都显示成方块。
   - 中文：已在 `lib/app/theme/fonts.dart` 显式指定 `fontFamilyFallback`（苹方等）解决。
-  - emoji：按名称指定 `Apple Color Emoji` 也无效，目前仍显示方块。待真机确认，或升级 Flutter 后复测。
+  - emoji：按名称指定 `Apple Color Emoji` 也无效，目前显示为「?」方块，后面还留着 emoji 原本的宽度，代理节点名因此被挤成省略号（改版前后都一样，不是字体改动引起的）。iOS 26 的 `AppleColorEmoji-160px.ttc` 带有新的 `bgcl`、`cntr` 表，推测是 Skia 不支持这种新格式。待真机确认，或升级 Flutter 后复测。
   - Web 不受影响。
 - M3E 组件的布局约束（违反时会触发布局断言，导致整页空白；新增页面要靠冒烟测试兜底）：
   - 外层不能用 `IntrinsicHeight` 包住 `M3EButtonGroup` 等内部使用 `LayoutBuilder` 的组件。
@@ -106,7 +119,8 @@
 | Material 库 | [`material_ui`](https://pub.dev/packages/material_ui)（官方拆分出的 Material 包） | **禁止** `package:flutter/material.dart`，见 3.1 |
 | M3E 组件 | [`material_3_expressive`](https://pub.dev/packages/material_3_expressive) | 社区包，见 3.2 |
 | 形状 / 动效 | `material_new_shapes`（MaterialShapes / 形变）、`motor`（弹簧物理） | M3E 包也依赖这两个 |
-| 动态取色 | `dynamic_color` | 由 `M3ETheme(dynamicColoring: true)` 使用 |
+| 动态取色 | `dynamic_color` | 通过 `M3EDynamicColorHost` 取系统主色，作为种子交给 `AppTheme` |
+| 字体 | Google Sans Flex（OFL，打包在 `assets/fonts/`） | 可变字体 Latin 子集，见 §6.7 |
 | 状态管理 | `flutter_riverpod` 3.x | **不使用代码生成** |
 | 路由 | `go_router` 18.x | `StatefulShellRoute.indexedStack` |
 | HTTP | `dio` | REST |
@@ -129,7 +143,8 @@
 ### 3.2 M3 Expressive 组件：`material_3_expressive`
 - 有对应的 `M3E*` 组件时优先使用：`M3ENavigationBar`、`M3ENavigationRail`、`M3EAppBar`、`M3EButton`、`M3EIconButton`、`M3EButtonGroup`、`M3ESegmentedButton`、`M3ESplitButton`、`M3EFab` / `M3EExtendedFab` / `M3EFabMenu`、`M3EToolbar`、`M3ECard`、`M3EListItem` / `M3EList`、`M3EChip`、`M3ETextField`、`M3ESwitch`、`M3ESlider`、`M3ELoadingIndicator`、`M3EProgressIndicator`、`M3EDialog`、`M3EBottomSheet`、`M3ESideSheet`、`M3ESnackbar`、`M3ETooltip`、`M3ESearchBar` 等。
 - 读取 M3E token（颜色、字体、形状、间距、动效）用 `M3ETheme.of(context)`；`Theme.of(context)` 也能拿到投影过来的 `ColorScheme` 和 `TextTheme`。
-- **`M3EMaterialApp` 不支持 Router。** 本项目在 `lib/app/app.dart` 中用 `MaterialApp.router` 加 `M3ETheme`（adaptive scope）复刻了它的行为。不要改回 `M3EMaterialApp`；升级 M3E 包时要对照它的实现检查是否需要同步。
+- 例外：**不可交互的卡片表面**（概览卡片、欢迎页表单底板）直接用 `Container` 加 `scheme.card` 和 28 圆角，不用 `M3ECard`。后者带按压、滑动、展开等交互机制，静态表面用不上；需要点按或滑动的卡片仍用 `M3ECard`。
+- **`M3EMaterialApp` 不支持 Router。** 本项目在 `lib/app/app.dart` 中用 `MaterialApp.router` 复刻了它的行为：`AppTheme` 生成亮 / 暗两套 `M3EThemeData` 和对应的 `ThemeData`，`builder` 里按解析后的亮度用 `M3EResolvedTheme` 注入。不用 `M3ETheme`，因为它的暗色主题是从亮色主色重新取种子、用默认方案推出来的，会和 Material 侧对不上。不要改回 `M3EMaterialApp`；升级 M3E 包时要对照它的实现检查是否需要同步。
 - 风险：这是单人维护的社区包。官方 `material_ui` 补齐某个 M3E 组件后（可跟踪 [flutter#168813](https://github.com/flutter/flutter/issues/168813)），优先迁回官方实现。遇到组件 bug 时，先在 `lib/shared/widgets/` 里做局部封装或绕过，不要直接 fork。
 
 ### 3.3 Web / WASM
@@ -158,8 +173,10 @@ lib/
 │   ├── app.dart              # MaterialApp.router + M3ETheme（替代 M3EMaterialApp）
 │   ├── router.dart           # go_router 配置、路由路径常量、ShellBranch 索引
 │   ├── shell/                # adaptive_shell（底栏 / Rail）、page_scaffold（页面骨架 + M3E 折叠大标题栏）、
-│   │                         # backend_switcher（后端切换器）、shell_scope（页面获取 shell 信息）
-│   └── theme/                # 种子色预设与动态取色支持判断、语义色（延迟好/中/差、上下行）
+│   │                         # branch_transition（页签切换淡入）、backend_switcher（后端切换器）、
+│   │                         # shell_scope（页面获取 shell 信息）
+│   └── theme/                # app_theme（种子色 → 亮/暗主题、AppColors）、fonts（字体与可变轴）、
+│                             # seed_colors（预设与动态取色支持判断）、semantic_colors（表面层级、延迟）
 ├── core/                     # 与具体页面无关的基础能力
 │   ├── mihomo/               # Mihomo API 层：MihomoApi 接口、REST/WebSocket 实现、模型、异常（不依赖 Flutter UI）
 │   │   └── mock/             # MockMihomoApi：开发用 mock 数据与模拟实时流
@@ -177,10 +194,11 @@ lib/
 │   └── backends/             # 欢迎页、后端添加/编辑/切换 UI
 ├── shared/                   # 跨功能复用
 │   ├── l10n.dart             # context.l10n 扩展
-│   ├── layout/               # WindowSizeClass 断点、pageGutter（内容最大宽度与两侧留白）
+│   ├── layout/               # WindowSizeClass 断点、pageGutter（内容最大宽度与两侧留白）、EqualHeightRow（同排卡片等高）
 │   ├── utils/                # 格式化（字节、速率、时长）等
 │   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、搜索框
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
+assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
 ```
 
@@ -222,6 +240,16 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 
 ## 6. UI / UX 规范（M3 Expressive）
 
+### 6.0 总原则：极简、动画流畅（用户明确要求）
+- **少即是多**：不放不承载信息的装饰（装饰性形状、彩色图标底板、徽章、描述性废话）。能用文字层级（大数字 + 弱化标签）表达的，就不加容器和图标。
+- **一屏一个色块**：每页最多一个大面积彩色元素（如概览的实时流量卡）。其余卡片都是素色，颜色只用于**状态**（选中、延迟好 / 中 / 差、错误）和**数据**（图表曲线）。
+- **元信息弱化**：类型、数量、地址、时间等用 `onSurfaceVariant`，主信息用 `onSurface`。
+- **动画要流畅**：
+  - 不做常驻 / 循环的装饰动画（加载指示器除外）。
+  - 动画期间不要逐帧重建大子树：把子组件在 motion builder 外面构建好再传进去，只让裁剪 / 透明度 / 变换随帧变化。
+  - 空间运动（展开、位移、形变）用弹簧；颜色、透明度用 ≤ 300ms 的 duration + `Curves.easeOutCubic`，避免 `easeOutBack` 这类会过冲的曲线作用在颜色上。
+  - 遵守系统的「减少动态效果」（`MediaQuery.disableAnimationsOf`）。
+
 ### 6.1 自适应布局（移动端与桌面端同等重要）
 | 窗口宽度 | 导航 | 内容布局 |
 |---|---|---|
@@ -238,10 +266,17 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 
 ### 6.3 颜色
 - 默认开启动态取色：Android 12+ 跟随壁纸，macOS / Windows 跟随系统强调色，其余平台用种子色兜底。设置里可以关闭动态取色并选择种子色预设（`lib/app/theme/`）。
-- **禁止硬编码颜色**，一律用 `ColorScheme` 的角色色（`primary`、`secondaryContainer`、`surfaceContainerHigh`……）。语义色（延迟好 / 中 / 差、上行 / 下行）通过 `lib/app/theme/` 里的 helper 获取，并 harmonize 到当前主色。
+- 配色方案是 `DynamicSchemeVariant.fidelity`（`app_theme.dart`）：`primaryContainer` 就是种子色本身，用户选什么颜色就看到什么颜色。框架默认的 tonal spot 会把颜色洗成灰色，不要改回去。
+- **表面层级**（`semantic_colors.dart`，不要直接挑 `surfaceContainer*`）：
+  - `canvas`：页面背景、顶栏、Rail（浅色是带色调的 `surfaceContainer`，深色是 `surface`）。
+  - `card`：卡片、列表行、搜索框、底栏（浅色是纯白 `surfaceContainerLowest`，深色是 `surfaceContainer`）。
+  - `cardInset`：卡片里的小块（节点格子、快捷操作、未选中的分段按钮）。
+- 需要同时参考亮 / 暗两套色板才能定的颜色放在 `AppColors`（ThemeExtension），例如 `heroAccent`：在主色块上与 `onPrimaryContainer` 搭配的第二强调色。
+- **禁止硬编码颜色**，一律用 `ColorScheme` 的角色色或上面的 helper。语义色（延迟好 / 中 / 差）通过 `lib/app/theme/` 里的 helper 获取，并 harmonize 到当前主色；上下行速率不单独配色（概览图表用 `onPrimaryContainer` 和 `AppColors.heroAccent`）。
 
 ### 6.4 形状、动效与反馈
-- 多用 M3E 的大圆角和 MaterialShapes（cookie、clover、sunny、pill 等）表达层级和个性，例如策略组图标、延迟徽章、空状态插图；按压形变交给 M3E 组件处理。
+- 圆角统一：卡片 28，卡内小块 14–18，选中的小块变为 22（形变由动画完成）。
+- MaterialShapes（cookie、clover、sunny 等）只用在少数标志性位置：欢迎页品牌标识、空状态 / 错误状态插图、后端头像。列表、卡片里不要用形状做装饰；按压形变交给 M3E 组件处理。
 - 动画优先用**弹簧**（`motor` 的 `MaterialSpringMotion.*`，或 M3E 组件自带的动效）。只有颜色、透明度这类非空间属性的过渡可以用 duration + curve。
 - 等待时间不确定时用 `M3ELoadingIndicator`（会变形的指示器）；能量化进度时用 `M3EProgressIndicator`（可选 wavy 样式）。
 - 实时数字（速率、延迟、流量）使用等宽数字 `FontFeature.tabularFigures()`，避免数字变化时跳动。
@@ -253,6 +288,17 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 
 ### 6.6 无障碍
 - 只有图标的按钮必须有 `tooltip` 或 `semanticLabel`；颜色不能是唯一的信息载体（延迟同时显示数字）；支持系统字体缩放，布局不能因此溢出。
+
+### 6.7 字体
+- 拉丁字符用打包的 **Google Sans Flex**（`assets/fonts/GoogleSansFlex.ttf`，OFL，许可证在同目录）；中文、emoji 走 `appFontFamilyFallback`（`lib/app/theme/fonts.dart`）。
+- 字阶用 M3E 的可变字体模式（`M3ETypeScaleMode.variable`，字距为 0）；`opsz` 随字号自动设置，标题类角色带少量圆角（`ROND`）。`wght` 不在主题里写死（原因见「已知问题」）。
+- 资源文件是从 google/fonts 仓库的原版裁出来的（只保留 `wght`、`opsz`、`ROND` 三个轴，只保留拉丁及常用符号，约 525KB；原版 3.9MB）。需要重新生成时：
+  ```bash
+  uvx --from fonttools fonttools varLib.instancer 'GoogleSansFlex[ROND,opsz,slnt,wdth,wght].ttf' slnt=0 wdth=100 -o instanced.ttf
+  uvx --from fonttools pyftsubset instanced.ttf --unicodes='U+0000-00FF,U+0100-017F,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2190-2193,U+2212,U+2215,U+FEFF,U+FFFD' --layout-features+=tnum,pnum,lnum,case,ss01,ss02 --output-file=assets/fonts/GoogleSansFlex.ttf
+  ```
+- 实时数字一律加 `FontFeature.tabularFigures()`（子集保留了 `tnum`）。
+- 这款字体**没有箭头**（←↑→↓）等符号，iOS 26 模拟器上回落到系统字体也会失败、显示成方块。界面上需要方向时用 Material 图标，链路分隔用 `›`。新增文案后，用 fonttools 读 `assets/fonts/GoogleSansFlex.ttf` 的 cmap 检查一遍非中文字符是否都覆盖。
 
 ---
 

@@ -197,13 +197,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get overviewMode => '代理模式';
 
   @override
-  String get overviewRealtimeTraffic => '实时流量';
-
-  @override
   String get overviewCore => '内核';
-
-  @override
-  String get overviewQuickActions => '快捷操作';
 
   @override
   String get modeRule => '规则';
@@ -241,6 +235,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get proxiesEmpty => '没有策略组';
 
   @override
+  String proxiesGroupCount(int count) {
+    return '$count 个代理组';
+  }
+
+  @override
   String get proxiesFixed => '已固定';
 
   @override
@@ -272,7 +271,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get connectionsPaused => '已暂停';
+  String get statusPaused => '已暂停';
 
   @override
   String get connectionDetails => '连接详情';
@@ -305,9 +304,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectionDuration => '时长';
 
   @override
-  String get connectionTraffic => '流量';
-
-  @override
   String get rulesTabRules => '规则';
 
   @override
@@ -321,6 +317,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ruleProvidersEmpty => '没有规则集';
+
+  @override
+  String ruleProvidersCount(int count) {
+    return '$count 个规则集';
+  }
 
   @override
   String ruleProviderRuleCount(int count) {

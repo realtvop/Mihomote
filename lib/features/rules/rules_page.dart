@@ -4,6 +4,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/shell/page_scaffold.dart';
+import '../../app/theme/semantic_colors.dart';
 import '../../core/mihomo/mihomo_api.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
@@ -27,8 +28,17 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final count = switch (_tab) {
+      _RulesTab.rules => ref.watch(rulesProvider).value?.length,
+      _RulesTab.providers => ref.watch(ruleProvidersProvider).value?.length,
+    };
     return PageScaffold(
       title: l10n.navRules,
+      subtitle: count == null
+          ? null
+          : _tab == _RulesTab.rules
+          ? l10n.ruleProviderRuleCount(count)
+          : l10n.ruleProvidersCount(count),
       onRefresh: () async {
         if (_tab == _RulesTab.rules) {
           ref.invalidate(rulesProvider);
@@ -50,12 +60,10 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                     M3ESegment(
                       value: _RulesTab.rules,
                       label: l10n.rulesTabRules,
-                      icon: const Icon(Icons.rule_rounded),
                     ),
                     M3ESegment(
                       value: _RulesTab.providers,
                       label: l10n.rulesTabProviders,
-                      icon: const Icon(Icons.inventory_2_outlined),
                     ),
                   ],
                   selected: {_tab},
@@ -106,6 +114,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
         return SliverPadding(
           padding: pageGutter(context),
           sliver: M3EList.sliver(
+            color: Theme.of(context).colorScheme.card,
             itemCount: rules.length,
             itemBuilder: (context, index) => _RuleItem(rule: rules[index]),
           ),
@@ -138,6 +147,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
       AsyncData(:final value) => SliverPadding(
         padding: pageGutter(context),
         sliver: M3EList.sliver(
+          color: Theme.of(context).colorScheme.card,
           itemCount: value.length,
           itemBuilder: (context, index) =>
               _RuleProviderItem(provider: value[index]),
@@ -185,20 +195,14 @@ class _RuleItem extends StatelessWidget {
         ),
       ),
       trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 160),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: scheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            rule.proxy,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: scheme.onSecondaryContainer,
-            ),
+        constraints: const BoxConstraints(maxWidth: 140),
+        child: Text(
+          rule.proxy,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.end,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -214,7 +218,6 @@ class _RuleProviderItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
     final updating = ref.watch(
       updatingRuleProvidersProvider.select((s) => s.contains(provider.name)),
     );
@@ -231,17 +234,6 @@ class _RuleProviderItem extends ConsumerWidget {
             DateFormat.yMd(locale).add_Hm().format(updatedAt.toLocal()),
           ),
       ].join(' · '),
-      leading: M3EShapeContainer(
-        kind: M3EShapeKind.cookie6Sided,
-        width: 40,
-        height: 40,
-        color: scheme.tertiaryContainer,
-        child: Icon(
-          Icons.inventory_2_rounded,
-          size: 20,
-          color: scheme.onTertiaryContainer,
-        ),
-      ),
       trailing: updating
           ? const SizedBox.square(
               dimension: 40,

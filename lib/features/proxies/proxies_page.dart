@@ -22,8 +22,12 @@ class ProxiesPage extends ConsumerWidget {
       coreConfigProvider.select((c) => c.value?.mode == TunnelMode.global),
     );
 
+    final groupCount = proxies.value?.groupNames
+        .where((name) => name != 'GLOBAL' || globalMode)
+        .length;
     return PageScaffold(
       title: l10n.navProxies,
+      subtitle: groupCount == null ? null : l10n.proxiesGroupCount(groupCount),
       onRefresh: () => ref.read(proxiesProvider.notifier).reload(),
       slivers: [
         switch (proxies) {
@@ -62,7 +66,7 @@ class ProxiesPage extends ConsumerWidget {
       padding: pageGutter(context).copyWith(top: 8),
       sliver: SliverList.separated(
         itemCount: groups.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) =>
             ProxyGroupCard(state: state, group: groups[index]),
       ),

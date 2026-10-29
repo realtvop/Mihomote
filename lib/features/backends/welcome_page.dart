@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/theme/semantic_colors.dart';
 import '../../core/backends/backend_profile.dart';
 import '../../core/backends/backends_providers.dart';
 import '../../shared/l10n.dart';
@@ -29,8 +30,8 @@ class WelcomePage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Center(child: _HeroShapes()),
-                  const SizedBox(height: 32),
+                  const Center(child: _BrandMark()),
+                  const SizedBox(height: 28),
                   Text(
                     l10n.welcomeTitle,
                     textAlign: TextAlign.center,
@@ -47,9 +48,12 @@ class WelcomePage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  M3ECard(
-                    variant: M3ECardVariant.filled,
+                  Container(
                     padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.card,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                     child: BackendForm(
                       submitLabel: l10n.welcomeConnect,
                       onSubmit: (profile) =>
@@ -78,68 +82,34 @@ class WelcomePage extends ConsumerWidget {
   }
 }
 
-/// A slowly turning cluster of Material shapes around the app glyph.
-class _HeroShapes extends StatefulWidget {
-  const _HeroShapes();
-
-  @override
-  State<_HeroShapes> createState() => _HeroShapesState();
-}
-
-class _HeroShapesState extends State<_HeroShapes>
-    with SingleTickerProviderStateMixin {
-  late final _spin = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 24),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _spin.dispose();
-    super.dispose();
-  }
+/// The app glyph in a Material shape, popping in once on arrival.
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 200,
-      height: 168,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 4,
-            top: 10,
-            child: M3EShapeContainer(
-              kind: M3EShapeKind.pill,
-              width: 64,
-              height: 40,
-              color: scheme.secondaryContainer,
-            ),
-          ),
-          Positioned(
-            right: 10,
-            bottom: 4,
-            child: M3EShapeContainer(
-              kind: M3EShapeKind.cookie4Sided,
-              width: 56,
-              height: 56,
-              color: scheme.tertiaryContainer,
-            ),
-          ),
-          RotationTransition(
-            turns: _spin,
-            child: M3EShapeContainer(
-              kind: M3EShapeKind.verySunny,
-              width: 128,
-              height: 128,
-              color: scheme.primaryContainer,
-            ),
-          ),
-          Icon(Icons.hub_rounded, size: 52, color: scheme.onPrimaryContainer),
-        ],
+    final mark = M3EShapeContainer(
+      kind: M3EShapeKind.cookie9Sided,
+      width: 96,
+      height: 96,
+      color: scheme.primaryContainer,
+      child: Icon(
+        Icons.hub_rounded,
+        size: 44,
+        color: scheme.onPrimaryContainer,
       ),
+    );
+    if (MediaQuery.disableAnimationsOf(context)) return mark;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0.0, 1.0),
+        child: Transform.scale(scale: 0.6 + 0.4 * t, child: child),
+      ),
+      child: mark,
     );
   }
 }

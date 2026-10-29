@@ -23,6 +23,16 @@ enum DelayQuality {
 extension SemanticColors on ColorScheme {
   bool get _dark => brightness == Brightness.dark;
 
+  /// Page background. Light mode tints it so white [card]s stand out; dark
+  /// mode keeps the darkest surface so cards read as raised.
+  Color get canvas => _dark ? surface : surfaceContainer;
+
+  /// Cards and list rows on the [canvas].
+  Color get card => _dark ? surfaceContainer : surfaceContainerLowest;
+
+  /// Tiles and wells nested inside a [card].
+  Color get cardInset => _dark ? surfaceContainerHigh : surfaceContainerLow;
+
   Color get success =>
       (_dark ? const Color(0xFF7DDB95) : const Color(0xFF2E8B47)).harmonizeWith(
         primary,
@@ -40,8 +50,4 @@ extension SemanticColors on ColorScheme {
     DelayQuality.failed => outline,
     DelayQuality.untested => onSurfaceVariant,
   };
-
-  Color get downloadColor => primary;
-
-  Color get uploadColor => tertiary;
 }

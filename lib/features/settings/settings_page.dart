@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/shell/page_scaffold.dart';
 import '../../app/theme/seed_colors.dart';
+import '../../app/theme/semantic_colors.dart';
 import '../../core/backends/backends_providers.dart';
 import '../../core/mihomo/mihomo_api.dart';
 import '../../core/settings/app_settings.dart';
@@ -55,11 +56,11 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
       child: Text(
         text,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -76,52 +77,60 @@ class _BackendsSection extends ConsumerWidget {
     final state = ref.watch(backendsProvider);
     final active = state.active;
 
-    final items = <Widget>[
+    // An M3EListItem inside an M3EList ignores its own onTap; taps are
+    // dispatched by index from the list instead.
+    final rows = <(Widget, VoidCallback)>[
       for (final profile in state.profiles)
-        M3EListItem(
-          headline: profile.name,
-          supportingText: profile.isMock
-              ? l10n.backendMockDescription
-              : profile.displayAddress,
-          selected: profile.id == active?.id,
-          leading: Icon(
-            profile.id == active?.id
-                ? Icons.radio_button_checked_rounded
-                : Icons.radio_button_off_rounded,
-            color: profile.id == active?.id
-                ? scheme.primary
-                : scheme.onSurfaceVariant,
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!profile.isMock)
+        (
+          M3EListItem(
+            headline: profile.name,
+            supportingText: profile.isMock
+                ? l10n.backendMockDescription
+                : profile.displayAddress,
+            selected: profile.id == active?.id,
+            leading: Icon(
+              profile.id == active?.id
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: profile.id == active?.id
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant,
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!profile.isMock)
+                  M3EIconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    variant: M3EIconButtonVariant.standard,
+                    tooltip: l10n.actionEdit,
+                    onPressed: () =>
+                        showBackendEditor(context, ref, initial: profile),
+                  ),
                 M3EIconButton(
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(Icons.delete_outline_rounded),
                   variant: M3EIconButtonVariant.standard,
-                  tooltip: l10n.actionEdit,
-                  onPressed: () =>
-                      showBackendEditor(context, ref, initial: profile),
+                  tooltip: l10n.actionDelete,
+                  onPressed: () => confirmDeleteBackend(context, ref, profile),
                 ),
-              M3EIconButton(
-                icon: const Icon(Icons.delete_outline_rounded),
-                variant: M3EIconButtonVariant.standard,
-                tooltip: l10n.actionDelete,
-                onPressed: () => confirmDeleteBackend(context, ref, profile),
-              ),
-            ],
+              ],
+            ),
           ),
-          onTap: () => ref.read(backendsProvider.notifier).activate(profile.id),
+          () => ref.read(backendsProvider.notifier).activate(profile.id),
         ),
-      M3EListItem(
-        headline: l10n.settingsAddBackend,
-        leading: Icon(Icons.add_rounded, color: scheme.primary),
-        onTap: () => showBackendEditor(context, ref),
+      (
+        M3EListItem(
+          headline: l10n.settingsAddBackend,
+          leading: Icon(Icons.add_rounded, color: scheme.primary),
+        ),
+        () => showBackendEditor(context, ref),
       ),
     ];
     return M3EList(
-      itemCount: items.length,
-      itemBuilder: (_, index) => items[index],
+      color: Theme.of(context).colorScheme.card,
+      itemCount: rows.length,
+      itemBuilder: (_, index) => rows[index].$1,
+      onTap: (index) => rows[index].$2(),
     );
   }
 }
@@ -196,6 +205,7 @@ class _AppearanceSection extends ConsumerWidget {
       ),
     ];
     return M3EList(
+      color: Theme.of(context).colorScheme.card,
       itemCount: items.length,
       itemBuilder: (_, index) => items[index],
     );
@@ -205,21 +215,24 @@ class _AppearanceSection extends ConsumerWidget {
 /// A list row whose control sits under its title (segmented buttons and
 /// swatches need the full width).
 class _ControlRow extends StatelessWidget {
-  const _ControlRow({required this.title, required this.child});
+  const _ControlRow({this.title, required this.child});
 
-  final String title;
+  /// Omitted when the section title already says it.
+  final String? title;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainer,
+      color: Theme.of(context).colorScheme.card,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 12),
+          if (title != null) ...[
+            Text(title!, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 12),
+          ],
           SizedBox(width: double.infinity, child: child),
         ],
       ),
@@ -279,9 +292,9 @@ class _LanguageSection extends ConsumerWidget {
     final tag =
         ref.watch(appSettingsProvider.select((s) => s.localeTag)) ?? 'system';
     return M3EList(
+      color: Theme.of(context).colorScheme.card,
       itemCount: 1,
       itemBuilder: (_, _) => _ControlRow(
-        title: l10n.settingsLanguage,
         child: M3ESegmentedButton<String>(
           segments: [
             M3ESegment(value: 'system', label: l10n.languageSystem),
@@ -301,8 +314,15 @@ class _LanguageSection extends ConsumerWidget {
   }
 }
 
-class _CoreSection extends ConsumerWidget {
+class _CoreSection extends ConsumerStatefulWidget {
   const _CoreSection();
+
+  @override
+  ConsumerState<_CoreSection> createState() => _CoreSectionState();
+}
+
+class _CoreSectionState extends ConsumerState<_CoreSection> {
+  final _logLevelMenu = MenuController();
 
   static const _logLevels = [
     LogLevel.debug,
@@ -313,7 +333,7 @@ class _CoreSection extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final config = ref.watch(coreConfigProvider);
     final notifier = ref.read(coreConfigProvider.notifier);
@@ -328,50 +348,64 @@ class _CoreSection extends ConsumerWidget {
 
     return switch (config) {
       AsyncData(:final value) => () {
-        final items = <Widget>[
-          M3EListItem(
-            headline: l10n.settingsAllowLan,
-            supportingText: l10n.settingsAllowLanSubtitle,
-            trailing: M3ESwitch(
-              value: value.allowLan,
-              semanticLabel: l10n.settingsAllowLan,
-              onChanged: (v) => run(() => notifier.setAllowLan(v)),
+        // Taps go through the list (see _BackendsSection): a row toggles its
+        // switch or opens its menu.
+        final rows = <(Widget, VoidCallback)>[
+          (
+            M3EListItem(
+              headline: l10n.settingsAllowLan,
+              supportingText: l10n.settingsAllowLanSubtitle,
+              trailing: M3ESwitch(
+                value: value.allowLan,
+                semanticLabel: l10n.settingsAllowLan,
+                onChanged: (v) => run(() => notifier.setAllowLan(v)),
+              ),
             ),
+            () => run(() => notifier.setAllowLan(!value.allowLan)),
           ),
-          M3EListItem(
-            headline: l10n.settingsIpv6,
-            trailing: M3ESwitch(
-              value: value.ipv6,
-              semanticLabel: l10n.settingsIpv6,
-              onChanged: (v) => run(() => notifier.setIpv6(v)),
+          (
+            M3EListItem(
+              headline: l10n.settingsIpv6,
+              trailing: M3ESwitch(
+                value: value.ipv6,
+                semanticLabel: l10n.settingsIpv6,
+                onChanged: (v) => run(() => notifier.setIpv6(v)),
+              ),
             ),
+            () => run(() => notifier.setIpv6(!value.ipv6)),
           ),
           // Five levels don't fit a segmented button on a phone, so this is
           // a menu instead.
-          MenuAnchor(
-            alignmentOffset: const Offset(16, 0),
-            menuChildren: [
-              for (final level in _logLevels)
-                MenuItemButton(
-                  leadingIcon: Icon(
-                    level == value.logLevel ? Icons.check_rounded : null,
-                    size: 20,
+          (
+            MenuAnchor(
+              controller: _logLevelMenu,
+              alignmentOffset: const Offset(16, 0),
+              menuChildren: [
+                for (final level in _logLevels)
+                  MenuItemButton(
+                    leadingIcon: Icon(
+                      level == value.logLevel ? Icons.check_rounded : null,
+                      size: 20,
+                    ),
+                    onPressed: () => run(() => notifier.setLogLevel(level)),
+                    child: Text(logLevelLabel(l10n, level)),
                   ),
-                  onPressed: () => run(() => notifier.setLogLevel(level)),
-                  child: Text(logLevelLabel(l10n, level)),
-                ),
-            ],
-            builder: (context, controller, _) => M3EListItem(
-              headline: l10n.settingsLogLevel,
-              trailingText: logLevelLabel(l10n, value.logLevel),
-              onTap: () =>
-                  controller.isOpen ? controller.close() : controller.open(),
+              ],
+              builder: (context, controller, _) => M3EListItem(
+                headline: l10n.settingsLogLevel,
+                trailingText: logLevelLabel(l10n, value.logLevel),
+              ),
             ),
+            () => _logLevelMenu.isOpen
+                ? _logLevelMenu.close()
+                : _logLevelMenu.open(),
           ),
         ];
         return M3EList(
-          itemCount: items.length,
-          itemBuilder: (_, index) => items[index],
+          color: Theme.of(context).colorScheme.card,
+          itemCount: rows.length,
+          itemBuilder: (_, index) => rows[index].$1,
+          onTap: (index) => rows[index].$2(),
         );
       }(),
       AsyncError(:final error) => SizedBox(
@@ -407,6 +441,7 @@ class _AboutSection extends ConsumerWidget {
         ),
     ];
     return M3EList(
+      color: Theme.of(context).colorScheme.card,
       itemCount: items.length,
       itemBuilder: (_, index) => items[index],
     );

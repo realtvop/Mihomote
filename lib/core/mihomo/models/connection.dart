@@ -97,8 +97,11 @@ class Connection {
 
   String get ruleLabel => rulePayload.isEmpty ? rule : '$rule($rulePayload)';
 
-  /// Chain in the order traffic flows through it: group → … → node.
-  String get chainLabel => chains.reversed.join(' → ');
+  /// Chain in the order traffic flows through it: group › … › node.
+  ///
+  /// `›` rather than an arrow: the bundled UI font has no arrows, and font
+  /// fallback for them fails on the iOS 26 simulator.
+  String get chainLabel => chains.reversed.join(' › ');
 }
 
 class ConnectionsSnapshot {
