@@ -62,8 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomePage()),
       StatefulShellRoute(
-        builder: (context, state, shell) =>
-            AdaptiveShell(navigationShell: shell),
+        builder: (context, state, shell) => AdaptiveShell(
+          navigationShell: shell,
+          settingsPage: const SettingsPage(),
+        ),
         navigatorContainerBuilder: (context, shell, children) =>
             BranchFadeThrough(
               currentIndex: shell.currentIndex,

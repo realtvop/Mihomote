@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,9 +16,16 @@ typedef _Destination = ({IconData icon, IconData selectedIcon, String label});
 /// bottom bar when compact, collapsed rail when medium, expanded rail when
 /// expanded.
 class AdaptiveShell extends StatefulWidget {
-  const AdaptiveShell({super.key, required this.navigationShell});
+  const AdaptiveShell({
+    super.key,
+    required this.navigationShell,
+    required this.settingsPage,
+  });
 
   final StatefulNavigationShell navigationShell;
+
+  /// The page pushed over the shell when settings opens on an iOS phone.
+  final Widget settingsPage;
 
   @override
   State<AdaptiveShell> createState() => _AdaptiveShellState();
@@ -26,16 +34,76 @@ class AdaptiveShell extends StatefulWidget {
 class _AdaptiveShellState extends State<AdaptiveShell> {
   int _lastPrimaryBranch = ShellBranch.overview;
 
+  /// Settings while it is pushed over the shell (iOS phones only).
+  Route<void>? _settingsRoute;
+  bool _settingsSyncScheduled = false;
+
   StatefulNavigationShell get _shell => widget.navigationShell;
+
+  /// iOS goes back with an edge swipe, which can only pop a pushed page;
+  /// switching to the settings branch would leave it nothing to pop. So on
+  /// iOS phones settings is pushed over the whole shell and gets the native
+  /// slide and swipe. The web keeps the branch so the URL and the browser's
+  /// own back stay in charge.
+  bool get _pushesSettings =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   void _goBranch(int index) {
     // Tapping the current destination again pops it back to its root.
     _shell.goBranch(index, initialLocation: index == _shell.currentIndex);
   }
 
-  void _openSettings() => _goBranch(ShellBranch.settings);
+  void _openSettings() {
+    if (_pushesSettings && WindowSizeClass.of(context).isCompact) {
+      _pushSettings();
+    } else {
+      _goBranch(ShellBranch.settings);
+    }
+  }
 
   void _leaveSettings() => _goBranch(_lastPrimaryBranch);
+
+  /// [animate] is false when settings is already on screen and only changes
+  /// form, so it must not slide in as if just opened.
+  void _pushSettings({bool animate = true}) {
+    if (_settingsRoute != null) return;
+    final route = _SettingsRoute(
+      animate: animate,
+      builder: (context) => ShellScope(
+        sizeClass: WindowSizeClass.of(context),
+        openSettings: _openSettings,
+        leaveSettings: () => Navigator.of(context).pop(),
+        child: widget.settingsPage,
+      ),
+    );
+    _settingsRoute = route;
+    Navigator.of(context).push(route).whenComplete(() {
+      if (_settingsRoute == route) _settingsRoute = null;
+    });
+  }
+
+  /// Puts settings in the form the window wants after it crosses the compact
+  /// breakpoint (rotation, split view) or a link opens the settings branch on
+  /// a phone: pushed on phones, the rail destination otherwise.
+  void _scheduleSettingsSync() {
+    if (_settingsSyncScheduled) return;
+    _settingsSyncScheduled = true;
+    // Navigating is not allowed during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _settingsSyncScheduled = false;
+      if (!mounted) return;
+      final route = _settingsRoute;
+      if (WindowSizeClass.of(context).isCompact) {
+        if (_shell.currentIndex != ShellBranch.settings) return;
+        _goBranch(_lastPrimaryBranch);
+        _pushSettings(animate: false);
+      } else if (route != null) {
+        _settingsRoute = null;
+        if (route.isActive) Navigator.of(context).removeRoute(route);
+        _goBranch(ShellBranch.settings);
+      }
+    });
+  }
 
   List<_Destination> _destinations(AppLocalizations l10n) => [
     (
@@ -76,6 +144,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     final sizeClass = WindowSizeClass.of(context);
     final index = _shell.currentIndex;
     if (index != ShellBranch.settings) _lastPrimaryBranch = index;
+    if (_pushesSettings &&
+        (sizeClass.isCompact
+            ? index == ShellBranch.settings
+            : _settingsRoute != null)) {
+      _scheduleSettingsSync();
+    }
     final settingsFullScreen =
         sizeClass.isCompact && index == ShellBranch.settings;
     final destinations = _destinations(l10n);
@@ -162,5 +236,31 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       },
       child: layout,
     );
+  }
+}
+
+/// Settings as a page of its own over the shell, so iOS can swipe it away.
+/// Its transition comes from the theme: the native slide on iOS.
+class _SettingsRoute extends MaterialPageRoute<void> {
+  _SettingsRoute({required super.builder, required this.animate});
+
+  final bool animate;
+
+  // Keep the standard gesture detector while skipping automatic motion when
+  // the system requests reduced animations.
+  bool get _reduceMotion => MediaQuery.disableAnimationsOf(navigator!.context);
+
+  @override
+  Duration get transitionDuration =>
+      _reduceMotion ? Duration.zero : super.transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration =>
+      _reduceMotion ? Duration.zero : super.reverseTransitionDuration;
+
+  @override
+  TickerFuture didPush() {
+    if (!animate) controller?.value = 1;
+    return super.didPush();
   }
 }

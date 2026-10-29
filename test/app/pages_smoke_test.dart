@@ -14,6 +14,7 @@ import 'package:mihomote/features/backends/backend_form.dart';
 import 'package:mihomote/features/overview/overview_page.dart';
 import 'package:mihomote/features/settings/settings_page.dart';
 import 'package:mihomote/core/backends/backend_profile.dart';
+import 'package:mihomote/core/backends/backends_providers.dart';
 import 'package:mihomote/core/mihomo/mihomo_api.dart';
 import 'package:mihomote/core/settings/app_settings.dart';
 import 'package:mihomote/core/state/core_providers.dart';
@@ -105,6 +106,181 @@ Future<void> _pumpFrames(WidgetTester tester, {int count = 40}) async {
 }
 
 void main() {
+  group('iOS settings navigation', () {
+    Future<void> openSettings(WidgetTester tester) async {
+      await tester.tap(find.byIcon(Icons.settings_outlined));
+      await _pumpFrames(tester);
+      expect(find.byType(SettingsPage), findsOneWidget);
+      expect(find.byType(M3ENavigationBar), findsNothing);
+    }
+
+    Future<void> swipeBack(WidgetTester tester) async {
+      await tester.dragFrom(const Offset(1, 350), const Offset(320, 0));
+      await _pumpFrames(tester);
+    }
+
+    testWidgets('edge swipe follows the finger, cancels, then returns', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        route: AppRoutes.proxies,
+        act: (container) async {
+          await openSettings(tester);
+          final page = find.byType(SettingsPage);
+          final gesture = await tester.startGesture(const Offset(1, 350));
+          await gesture.moveBy(const Offset(100, 0));
+          await tester.pump();
+          await gesture.moveBy(const Offset(30, 0));
+          await tester.pump();
+          expect(tester.getTopLeft(page).dx, greaterThan(0));
+          await tester.pump(const Duration(milliseconds: 500));
+          await gesture.up();
+          await _pumpFrames(tester);
+          expect(page, findsOneWidget);
+          expect(tester.getTopLeft(page).dx, 0);
+
+          await swipeBack(tester);
+          expect(page, findsNothing);
+          expect(
+            container.read(routerProvider).state.uri.path,
+            AppRoutes.proxies,
+          );
+          expect(
+            tester
+                .widget<M3ENavigationBar>(find.byType(M3ENavigationBar))
+                .selectedIndex,
+            ShellBranch.proxies,
+          );
+          // The completed route must not prevent opening settings again.
+          await openSettings(tester);
+          await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+          await _pumpFrames(tester);
+          expect(page, findsNothing);
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('backend menu opens swipeable settings', (tester) async {
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        act: (_) async {
+          await tester.tap(find.byType(BackendSwitcher).first);
+          await _pumpFrames(tester);
+          await tester.tap(find.text('Manage backends'));
+          await _pumpFrames(tester);
+          expect(find.byType(SettingsPage), findsOneWidget);
+          await swipeBack(tester);
+          expect(find.byType(SettingsPage), findsNothing);
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('reduced motion keeps settings swipeable', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        act: (_) async {
+          await openSettings(tester);
+          final route = ModalRoute.of(
+            tester.element(find.byType(SettingsPage)),
+          )!;
+          expect(route.transitionDuration, Duration.zero);
+          expect(route.reverseTransitionDuration, Duration.zero);
+          await swipeBack(tester);
+          expect(find.byType(SettingsPage), findsNothing);
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('direct settings route can swipe back to overview', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        route: AppRoutes.settings,
+        act: (container) async {
+          await _pumpFrames(tester);
+          expect(find.byType(SettingsPage), findsOneWidget);
+          await swipeBack(tester);
+          expect(find.byType(SettingsPage), findsNothing);
+          expect(
+            container.read(routerProvider).state.uri.path,
+            AppRoutes.overview,
+          );
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('settings adapts across widths and preserves return tab', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        route: AppRoutes.rules,
+        act: (container) async {
+          await openSettings(tester);
+          for (final width in [700.0, 1280.0]) {
+            tester.view.physicalSize = Size(width, 820) * 2;
+            await _pumpFrames(tester);
+            expect(find.byType(SettingsPage), findsOneWidget);
+            expect(find.byType(M3ENavigationRail), findsOneWidget);
+            expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+            expect(
+              container.read(routerProvider).state.uri.path,
+              AppRoutes.settings,
+            );
+          }
+          tester.view.physicalSize = _sizes['compact']! * 2;
+          await _pumpFrames(tester);
+          expect(find.byType(SettingsPage), findsOneWidget);
+          expect(find.byType(M3ENavigationBar), findsNothing);
+          await swipeBack(tester);
+          expect(find.byType(SettingsPage), findsNothing);
+          expect(
+            container.read(routerProvider).state.uri.path,
+            AppRoutes.rules,
+          );
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('removing last backend dismisses pushed settings', (
+      tester,
+    ) async {
+      await _render(
+        tester,
+        size: _sizes['compact']!,
+        withMockBackend: true,
+        act: (container) async {
+          await openSettings(tester);
+          final backend = container.read(activeBackendProvider)!;
+          await container.read(backendsProvider.notifier).remove(backend.id);
+          await _pumpFrames(tester);
+          expect(find.byType(SettingsPage), findsNothing);
+          expect(
+            container.read(routerProvider).state.uri.path,
+            AppRoutes.welcome,
+          );
+        },
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
   const routes = [
     AppRoutes.overview,
     AppRoutes.proxies,

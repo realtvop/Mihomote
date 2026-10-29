@@ -33,6 +33,7 @@
     - 导航形态：底栏 / 收起的 Rail / 展开的 Rail
     - 窄屏下设置页全屏显示，带返回按钮
     - Android 返回键：非概览页先回到概览，概览页再退出
+    - iOS 窄屏设置页用 `MaterialPageRoute` 压入根 Navigator，支持原生边缘侧滑返回（跟手、取消、返回原主页面）和减少动态效果；宽屏仍作为 Rail 分支，跨断点时自动转换；Web 保留分支导航
   - 中英文案：`lib/l10n/`
   - API 层：`lib/core/mihomo/`，包括 `MihomoApi` 接口、`MihomoClient`、`MockMihomoApi` 和各模型
   - 后端管理：`lib/core/backends/`、`lib/features/backends/`
@@ -76,11 +77,12 @@
   - mock 修复：日志流在低于筛选等级的条目上不 `yield`，取消订阅后仍不断创建计时器，导致测试偶发失败
 - [x] 代理 / 规则页的页签、设置里的主题 / 语言选择全部由 `M3ESegmentedButton` 替换为连接式 `M3EButtonGroup`，保留原有选项和必选单选逻辑；冒烟测试通过可命中的文字定位按钮，排除按钮组内部的透明测量副本；`flutter analyze` 无问题，56 个测试（含窄 / 宽屏冒烟）全部通过
 - [x] 代理 / 规则页的未选中页签按钮显式使用 `scheme.card`，修复默认 `surfaceContainer` 与浅色页面背景同色的问题；选中态沿用组件主色
+- [x] iOS 侧滑返回接线完成：`router.dart` 向 `AdaptiveShell` 提供设置页，`adaptive_shell.dart` 管理压栈、返回和窗口断点同步。`pages_smoke_test.dart` 新增 6 个 iOS 回归测试，覆盖跟手与取消、返回原页及再次打开、后端菜单入口、直接导航、窄 / 中 / 宽屏切换、减少动态效果和删除最后一个后端后的重定向；模拟器包已编译并安装，本次手势交互检查未完成，按用户要求停止后续测试并提交
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
-  - 编译通过：`flutter build web --wasm`（改为全 M3E 后）、`flutter build macos --debug`（改版前）
-  - `flutter test`：58 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
+  - 编译通过：`flutter build web --wasm`（iOS 侧滑返回适配后）、`flutter build macos --debug`（改版前）；iOS Debug 模拟器包（侧滑适配后，用临时 Debug scheme 执行 `xcodebuild`，保留原 Runner 的 Release 启动配置）
+  - `flutter analyze` 无问题；`flutter test`：64 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -135,7 +137,7 @@
 | 动态取色 | `dynamic_color` | 通过 `M3EDynamicColorHost` 取系统主色，作为种子交给 `AppTheme` |
 | 字体 | Google Sans Flex（OFL，打包在 `assets/fonts/`） | 可变字体 Latin 子集，见 §6.7 |
 | 状态管理 | `flutter_riverpod` 3.x | **不使用代码生成** |
-| 路由 | `go_router` 18.x | `StatefulShellRoute.indexedStack` |
+| 路由 | `go_router` 18.x | `StatefulShellRoute` + `BranchFadeThrough`（保持分支状态） |
 | HTTP | `dio` | REST |
 | WebSocket | `web_socket_channel` | traffic / memory / logs / connections |
 | 本地存储 | `shared_preferences`（`SharedPreferencesWithCache`） | 后端配置、应用设置 |
@@ -185,7 +187,7 @@
 lib/
 ├── main.dart                 # 入口：初始化 SharedPreferences，挂载 ProviderScope
 ├── app/                      # 应用级装配
-│   ├── app.dart              # MaterialApp.router + M3ETheme（替代 M3EMaterialApp）
+│   ├── app.dart              # MaterialApp.router + M3EResolvedTheme（替代 M3EMaterialApp）
 │   ├── router.dart           # go_router 配置、路由路径常量、ShellBranch 索引
 │   ├── shell/                # adaptive_shell（底栏 / Rail）、page_scaffold（页面骨架 + M3E 折叠大标题栏）、
 │   │                         # branch_transition（页签切换淡入）、backend_switcher（后端切换器）、
@@ -231,12 +233,12 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 - 使用 `Provider`、`NotifierProvider`、`AsyncNotifierProvider`、`StreamProvider` 等手写 provider，provider 定义在对应目录的 `*_providers.dart` 里。
 - **当前后端**：`activeBackendProvider` 决定 `mihomoClientProvider`。所有依赖后端数据的 provider 都必须 `ref.watch(mihomoClientProvider)`，这样切换后端时会自动重建、自动断开旧的 WebSocket。
 - 不要在 Widget 里直接创建 `MihomoClient`、`Dio` 或 `WebSocketChannel`。
-- 实时流（traffic / memory / logs / connections）由 provider 持有。页面放在 `StatefulShellRoute.indexedStack` 里，切换 tab 时页面不会销毁，所以流也会保持连接（概览图因此能连续）。离开时需要释放资源的流使用 `autoDispose`。
+- 实时流（traffic / memory / logs / connections）由 provider 持有。页面通过 `StatefulShellRoute` + `BranchFadeThrough` 保持分支状态，切换 tab 时页面不会销毁，所以流也会保持连接（概览图因此能连续）。离开时需要释放资源的流使用 `autoDispose`。
 - 用户操作（选择节点、切换模式等）走 Notifier 方法，并在本地做乐观更新，失败时回滚并提示。
 
 ### 5.3 路由
-- `go_router` 使用 `StatefulShellRoute.indexedStack`，分支顺序为：概览、代理、连接、规则、日志、设置（索引 0–5）。
-- 窄屏下设置不在底栏里，而是通过顶栏齿轮按钮进入；这时隐藏底栏并显示返回按钮，返回到上一个主页面。宽屏下设置是侧边栏的第 6 项。
+- `go_router` 使用 `StatefulShellRoute` + `BranchFadeThrough`（保持分支状态），分支顺序为：概览、代理、连接、规则、日志、设置（索引 0–5）。
+- 窄屏下设置不在底栏里，而是通过顶栏齿轮按钮进入；这时隐藏底栏并显示返回按钮，返回到上一个主页面。原生 iOS 窄屏通过根 Navigator 压入 `MaterialPageRoute`，沿用主题提供的 iOS 转场与侧滑手势；其他平台和 Web 仍切到设置分支。宽屏下设置是侧边栏的第 6 项；iOS 跨 compact 断点或直接打开设置分支时，`AdaptiveShell` 在帧末同步路由形态。
 - 还没有任何后端时，重定向到欢迎页 `/welcome`。
 - 路由路径统一定义在 `lib/app/router.dart` 的常量里，不要在别处手写字符串。
 
