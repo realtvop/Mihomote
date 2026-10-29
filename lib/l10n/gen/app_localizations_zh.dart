@@ -209,6 +209,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modeDirect => '直连';
 
   @override
+  String modeSwitchConfirm(String mode) {
+    return '切换到$mode模式？';
+  }
+
+  @override
+  String get modeGlobalHint => '所有流量都会走 GLOBAL 里选中的节点，不再按规则分流。';
+
+  @override
+  String get modeDirectHint => '所有流量都会直连、不走代理，不再按规则分流。';
+
+  @override
+  String get modeSwitch => '切换';
+
+  @override
   String get actionFlushDns => '清空 DNS 缓存';
 
   @override

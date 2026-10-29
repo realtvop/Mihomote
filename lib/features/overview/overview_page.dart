@@ -14,6 +14,7 @@ import '../../shared/l10n.dart';
 import '../../shared/layout/equal_height_row.dart';
 import '../../shared/layout/page_padding.dart';
 import '../../shared/utils/format.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/status_views.dart';
 import 'overview_providers.dart';
 import 'widgets/traffic_chart.dart';
@@ -438,6 +439,7 @@ class _ModeCard extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final config = ref.watch(coreConfigProvider);
     final mode = config.value?.mode;
+    final labels = [l10n.modeRule, l10n.modeGlobal, l10n.modeDirect];
 
     return _Card(
       children: [
@@ -465,20 +467,29 @@ class _ModeCard extends ConsumerWidget {
           ),
           onSelectedIndexChanged: (index) async {
             if (index == null || index < 0) return;
+            final next = _modes[index];
+            // Global and direct reroute all traffic at once, so a stray tap
+            // must not be enough. The group only follows the config, so it
+            // stays put until this is confirmed.
+            if (next != TunnelMode.rule) {
+              final confirmed = await showConfirmDialog(
+                context,
+                title: l10n.modeSwitchConfirm(labels[index]),
+                message: next == TunnelMode.global
+                    ? l10n.modeGlobalHint
+                    : l10n.modeDirectHint,
+                confirmLabel: l10n.modeSwitch,
+              );
+              if (!confirmed || !context.mounted) return;
+            }
             try {
-              await ref
-                  .read(coreConfigProvider.notifier)
-                  .setMode(_modes[index]);
+              await ref.read(coreConfigProvider.notifier).setMode(next);
             } catch (e) {
               if (context.mounted) showErrorSnackbar(context, e);
             }
           },
           actions: [
-            for (final label in [
-              l10n.modeRule,
-              l10n.modeGlobal,
-              l10n.modeDirect,
-            ])
+            for (final label in labels)
               M3EButtonGroupAction(
                 label: Text(label, maxLines: 1, softWrap: false),
               ),

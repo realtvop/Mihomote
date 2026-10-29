@@ -72,6 +72,10 @@
   "modeRule": "规则",
   "modeGlobal": "全局",
   "modeDirect": "直连",
+  "modeSwitchConfirm": "切换到{mode}模式？",
+  "modeGlobalHint": "所有流量都会走 GLOBAL 里选中的节点，不再按规则分流。",
+  "modeDirectHint": "所有流量都会直连、不走代理，不再按规则分流。",
+  "modeSwitch": "切换",
 
   "actionFlushDns": "清空 DNS 缓存",
   "actionFlushFakeIp": "清空 Fake-IP 缓存",

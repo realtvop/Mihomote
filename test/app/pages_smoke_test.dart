@@ -11,9 +11,12 @@ import 'package:mihomote/app/app.dart';
 import 'package:mihomote/app/router.dart';
 import 'package:mihomote/app/shell/backend_switcher.dart';
 import 'package:mihomote/features/backends/backend_form.dart';
+import 'package:mihomote/features/overview/overview_page.dart';
 import 'package:mihomote/features/settings/settings_page.dart';
 import 'package:mihomote/core/backends/backend_profile.dart';
+import 'package:mihomote/core/mihomo/mihomo_api.dart';
 import 'package:mihomote/core/settings/app_settings.dart';
+import 'package:mihomote/core/state/core_providers.dart';
 import 'package:mihomote/core/storage/preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -257,6 +260,58 @@ void main() {
           await _pumpFrames(tester);
         },
         verify: () => expect(find.byType(M3EDialog), findsOneWidget),
+      );
+    });
+
+    testWidgets('leaving rule mode asks first ($label)', (tester) async {
+      await _render(
+        tester,
+        size: size,
+        withMockBackend: true,
+        route: AppRoutes.overview,
+        act: (container) async {
+          TunnelMode? mode() => container.read(coreConfigProvider).value?.mode;
+          // The group also lays its labels out offstage to measure them.
+          Finder segment(String label) => find.text(label).hitTestable();
+
+          final group = find.descendant(
+            of: find.byType(OverviewPage),
+            matching: find.byType(M3EButtonGroup),
+          );
+          await tester.scrollUntilVisible(
+            group,
+            200,
+            scrollable: find
+                .descendant(
+                  of: find.byType(OverviewPage),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          await Scrollable.ensureVisible(tester.element(group), alignment: 0.5);
+          await tester.pump();
+
+          await tester.tap(segment('Global'));
+          await _pumpFrames(tester);
+          expect(find.text('Switch to Global mode?'), findsOneWidget);
+          expect(find.textContaining('ignoring rules'), findsOneWidget);
+          await tester.tap(find.widgetWithText(M3EButton, 'Cancel'));
+          await _pumpFrames(tester);
+          expect(find.byType(M3EDialog), findsNothing);
+          expect(mode(), TunnelMode.rule);
+
+          await tester.tap(segment('Direct'));
+          await _pumpFrames(tester);
+          await tester.tap(find.widgetWithText(M3EButton, 'Switch'));
+          await _pumpFrames(tester);
+          expect(mode(), TunnelMode.direct);
+
+          // Back to rule needs no confirmation.
+          await tester.tap(segment('Rule'));
+          await _pumpFrames(tester);
+          expect(find.byType(M3EDialog), findsNothing);
+          expect(mode(), TunnelMode.rule);
+        },
       );
     });
 

@@ -211,6 +211,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modeDirect => 'Direct';
 
   @override
+  String modeSwitchConfirm(String mode) {
+    return 'Switch to $mode mode?';
+  }
+
+  @override
+  String get modeGlobalHint =>
+      'All traffic will go through the proxy selected in GLOBAL, ignoring rules.';
+
+  @override
+  String get modeDirectHint =>
+      'All traffic will connect directly without a proxy, ignoring rules.';
+
+  @override
+  String get modeSwitch => 'Switch';
+
+  @override
   String get actionFlushDns => 'Flush DNS cache';
 
   @override

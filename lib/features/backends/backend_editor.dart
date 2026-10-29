@@ -6,6 +6,7 @@ import '../../core/backends/backend_profile.dart';
 import '../../core/backends/backends_providers.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/window_size_class.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import 'backend_form.dart';
 
 /// Adds or edits a backend: full-screen on compact windows, a dialog
@@ -54,25 +55,12 @@ Future<void> confirmDeleteBackend(
   BackendProfile profile,
 ) async {
   final l10n = context.l10n;
-  final confirmed = await M3EDialog.show<bool>(
+  final confirmed = await showConfirmDialog(
     context,
-    dialog: Builder(
-      builder: (dialogContext) => M3EDialog(
-        title: l10n.backendDeleteConfirm(profile.name),
-        actions: [
-          M3EButton.text(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          M3EButton.filled(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.actionDelete),
-          ),
-        ],
-      ),
-    ),
+    title: l10n.backendDeleteConfirm(profile.name),
+    confirmLabel: l10n.actionDelete,
   );
-  if (confirmed == true) {
+  if (confirmed) {
     await ref.read(backendsProvider.notifier).remove(profile.id);
   }
 }

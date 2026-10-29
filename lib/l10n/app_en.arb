@@ -76,6 +76,11 @@
   "modeRule": "Rule",
   "modeGlobal": "Global",
   "modeDirect": "Direct",
+  "modeSwitchConfirm": "Switch to {mode} mode?",
+  "@modeSwitchConfirm": {"placeholders": {"mode": {"type": "String"}}},
+  "modeGlobalHint": "All traffic will go through the proxy selected in GLOBAL, ignoring rules.",
+  "modeDirectHint": "All traffic will connect directly without a proxy, ignoring rules.",
+  "modeSwitch": "Switch",
 
   "actionFlushDns": "Flush DNS cache",
   "actionFlushFakeIp": "Flush Fake-IP cache",

@@ -482,6 +482,30 @@ abstract class AppLocalizations {
   /// **'Direct'**
   String get modeDirect;
 
+  /// No description provided for @modeSwitchConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {mode} mode?'**
+  String modeSwitchConfirm(String mode);
+
+  /// No description provided for @modeGlobalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'All traffic will go through the proxy selected in GLOBAL, ignoring rules.'**
+  String get modeGlobalHint;
+
+  /// No description provided for @modeDirectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'All traffic will connect directly without a proxy, ignoring rules.'**
+  String get modeDirectHint;
+
+  /// No description provided for @modeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get modeSwitch;
+
   /// No description provided for @actionFlushDns.
   ///
   /// In en, this message translates to:

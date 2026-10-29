@@ -9,6 +9,7 @@ import '../../core/state/core_providers.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
 import '../../shared/utils/format.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/search_field.dart';
 import '../../shared/widgets/status_views.dart';
 import 'connections_providers.dart';
@@ -41,25 +42,12 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
 
   Future<void> _closeAll(int count) async {
     final l10n = context.l10n;
-    final confirmed = await M3EDialog.show<bool>(
+    final confirmed = await showConfirmDialog(
       context,
-      dialog: Builder(
-        builder: (dialogContext) => M3EDialog(
-          title: l10n.connectionsCloseAllConfirm(count),
-          actions: [
-            M3EButton.text(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.actionCancel),
-            ),
-            M3EButton.filled(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.connectionsCloseAll),
-            ),
-          ],
-        ),
-      ),
+      title: l10n.connectionsCloseAllConfirm(count),
+      confirmLabel: l10n.connectionsCloseAll,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       await ref.read(connectionsProvider.notifier).closeAll();
     } catch (e) {

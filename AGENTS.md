@@ -45,6 +45,7 @@
     - 页面冒烟测试 `test/app/pages_smoke_test.dart`：用 mock 后端，在窄屏（402×874）和宽屏（1280×820）下渲染所有页面，有任何异常即失败
 - [x] **M1 核心页面**
   - 概览：实时速率曲线、累计流量、内存、连接数、模式切换按钮组、快捷操作
+    - 切到全局或直连前要确认（会改变全部流量的走向），切回规则不用确认；取消后按钮组保持原选择（它只跟随配置状态）
   - 代理：
     - 策略组卡片：折叠时显示当前选择及其延迟，展开为节点网格，点击即选择
     - 组测速；单节点测速通过长按或右键触发
@@ -69,7 +70,7 @@
   - 顺带修复：`M3EList` 里的行点按一直无效（连接详情、切换 / 添加后端、日志等级菜单都打不开，见已知问题）；连接详情 sheet 缺少 Material 祖先、内容超高时溢出
 - [x] **UI 全部改用 M3E 组件**（用户要求，规则见 §3.2）
   - 菜单：后端切换、日志筛选用 `M3EMenu`；设置里的日志等级行用 `showM3EMenu` 锚定在该行
-  - 对话框：添加 / 编辑后端在窄屏用 `M3EDialog.showFullScreen`、其余用 `M3EDialog.show`；删除后端、断开全部连接的确认框用 `M3EDialog`
+  - 对话框：添加 / 编辑后端在窄屏用 `M3EDialog.showFullScreen`、其余用 `M3EDialog.show`；是 / 否确认框统一用 `lib/shared/widgets/confirm_dialog.dart` 的 `showConfirmDialog`（基于 `M3EDialog`）：删除后端、断开全部连接、切换到全局 / 直连模式
   - 表面与可点区域：概览卡片、流量卡、快捷操作、代理组卡片与节点、欢迎页表单、连接测试结果都改为 `M3ECard`；后端切换器窄屏是 `M3EIconButton`、宽屏是 `M3ECard`；种子色色板是 `M3EIconButton` 的切换态
   - 列表：连接详情改为 `M3EList`（点一行复制该值）；日志行改为 `M3EList.sliver`
   - mock 修复：日志流在低于筛选等级的条目上不 `yield`，取消订阅后仍不断创建计时器，导致测试偶发失败
@@ -79,7 +80,7 @@
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
   - 编译通过：`flutter build web --wasm`（改为全 M3E 后）、`flutter build macos --debug`（改版前）
-  - `flutter test`：56 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、两个确认框、代理集（展开并健康检查）；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
+  - `flutter test`：58 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -154,7 +155,7 @@
 
 ### 3.2 M3 Expressive 组件：`material_3_expressive`
 - **UI 只用 M3E 组件（硬性规则，用户要求）。** 可用的有：`M3ENavigationBar`、`M3ENavigationRail`、`M3EAppBar`、`M3EButton`、`M3EIconButton`、`M3EButtonGroup`、`M3ESegmentedButton`、`M3ESplitButton`、`M3EFab` / `M3EExtendedFab` / `M3EFabMenu`、`M3EToolbar`、`M3ECard`、`M3EListItem` / `M3EList`、`M3EChip`、`M3ETextField`、`M3ESwitch`、`M3ESlider`、`M3ELoadingIndicator`、`M3EProgressIndicator`、`M3EDialog`、`M3EBottomSheet`、`M3ESideSheet`、`M3ESnackbar`、`M3ETooltip`、`M3EMenu`、`M3ESearchBar` 等。
-  - 禁止使用旧版 Material 组件：`MenuAnchor` / `MenuItemButton` / `PopupMenuButton`（改用 `M3EMenu` 或 `showM3EMenu`）、`showDialog` / `AlertDialog` / `Dialog`（改用 `M3EDialog.show` / `showFullScreen`）、`Tooltip`（改用 `M3ETooltip` 或组件自带的 `tooltip`）、`Divider`、`Card`、`ListTile`、`InkWell` / `InkResponse` / `Material`（可点的自定义区域用 `M3ECard` 的 `onPressed` / `onLongPress`）。
+  - 禁止使用旧版 Material 组件：`MenuAnchor` / `MenuItemButton` / `PopupMenuButton`（改用 `M3EMenu` 或 `showM3EMenu`）、`showDialog` / `AlertDialog` / `Dialog`（改用 `M3EDialog.show` / `showFullScreen`；是 / 否确认用 `showConfirmDialog`）、`Tooltip`（改用 `M3ETooltip` 或组件自带的 `tooltip`）、`Divider`、`Card`、`ListTile`、`InkWell` / `InkResponse` / `Material`（可点的自定义区域用 `M3ECard` 的 `onPressed` / `onLongPress`）。
   - 卡片表面一律用 `M3ECard`（`variant: filled`，颜色取 §6.3 的表面层级）；不可交互的卡片不传 `onPressed`。不要再用 `Container` 加 `BoxDecoration` 拼卡片。
   - 只有 M3E 没有对应组件时才用框架组件：`Scaffold`、`SelectableText`、纯装饰的状态圆点等。
 - 读取 M3E token（颜色、字体、形状、间距、动效）用 `M3ETheme.of(context)`；`Theme.of(context)` 也能拿到投影过来的 `ColorScheme` 和 `TextTheme`。
@@ -210,7 +211,8 @@ lib/
 │   ├── l10n.dart             # context.l10n 扩展
 │   ├── layout/               # WindowSizeClass 断点、pageGutter（内容最大宽度与两侧留白）、EqualHeightRow（同排卡片等高）
 │   ├── utils/                # 格式化（字节、速率、时长）等
-│   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、搜索框、Reveal / SpringReveal（弹簧展开）
+│   └── widgets/              # 状态视图（加载 / 空 / 错误 + describeError）、确认框（showConfirmDialog）、搜索框、
+│                             # Reveal / SpringReveal（弹簧展开）
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
