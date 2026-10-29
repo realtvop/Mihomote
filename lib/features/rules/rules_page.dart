@@ -58,6 +58,13 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                 M3EButtonGroup(
                   type: M3EButtonGroupType.connected,
                   selectionRequired: true,
+                  decoration: M3EButtonDecoration(
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? null
+                          : Theme.of(context).colorScheme.card,
+                    ),
+                  ),
                   actions: [
                     M3EButtonGroupAction(label: Text(l10n.rulesTabRules)),
                     M3EButtonGroupAction(label: Text(l10n.rulesTabProviders)),

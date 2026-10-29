@@ -3,6 +3,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/shell/page_scaffold.dart';
+import '../../app/theme/semantic_colors.dart';
 import '../../core/mihomo/mihomo_api.dart';
 import '../../core/state/core_providers.dart';
 import '../../shared/l10n.dart';
@@ -62,6 +63,13 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
               child: M3EButtonGroup(
                 type: M3EButtonGroupType.connected,
                 selectionRequired: true,
+                decoration: M3EButtonDecoration(
+                  backgroundColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? null
+                        : Theme.of(context).colorScheme.card,
+                  ),
+                ),
                 actions: [
                   M3EButtonGroupAction(label: Text(l10n.proxiesTabGroups)),
                   M3EButtonGroupAction(label: Text(l10n.proxiesTabProviders)),
