@@ -34,12 +34,12 @@ class ProxyProviderCard extends ConsumerWidget {
       expandedProxyProvidersProvider.select((s) => s.contains(name)),
     );
     final updating = ref.watch(
-      updatingProxyProvidersProvider.select((s) => s.contains(name)),
+      updatingProxyProvidersViewProvider.select((s) => s.contains(name)),
     );
     final checking = ref.watch(
-      checkingProxyProvidersProvider.select((s) => s.contains(name)),
+      checkingProxyProvidersViewProvider.select((s) => s.contains(name)),
     );
-    final notifier = ref.read(proxyProvidersProvider.notifier);
+    final actions = ref.read(proxyActionsProvider);
 
     Future<void> run(Future<void> Function() action) async {
       try {
@@ -72,7 +72,7 @@ class ProxyProviderCard extends ConsumerWidget {
           busy: checking,
           onPressed: provider.proxies.isEmpty
               ? null
-              : () => run(() => notifier.healthCheck(name)),
+              : () => run(() => actions.healthCheckProvider(name)),
         ),
         // Only remote providers have anything to download.
         ExpandableCardAction(
@@ -80,7 +80,7 @@ class ProxyProviderCard extends ConsumerWidget {
           tooltip: l10n.actionUpdate,
           busy: updating,
           onPressed: provider.vehicleType == 'HTTP'
-              ? () => run(() => notifier.updateProvider(name))
+              ? () => run(() => actions.updateProvider(name))
               : null,
         ),
       ],
@@ -100,11 +100,8 @@ class ProxyProviderCard extends ConsumerWidget {
                     node.delayFor(provider.testUrl),
               ),
           ],
-          onTest: (node) => run(
-            () => ref
-                .read(proxiesProvider.notifier)
-                .testNode(node, url: provider.testUrl),
-          ),
+          onTest: (node) =>
+              run(() => actions.testNode(node, url: provider.testUrl)),
         ),
       ),
     );

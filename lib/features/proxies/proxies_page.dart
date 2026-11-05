@@ -4,8 +4,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/shell/page_scaffold.dart';
 import '../../app/theme/semantic_colors.dart';
-import '../../core/mihomo/mihomo_api.dart';
-import '../../core/state/core_providers.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
 import '../../shared/widgets/reveal.dart';
@@ -43,14 +41,13 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final proxies = ref.watch(proxiesProvider);
+    final proxies = ref.watch(proxiesViewProvider);
     // Many configs have no providers; then there is nothing to switch to.
-    final providers = ref.watch(proxyProvidersProvider).value ?? const [];
+    final providers = ref.watch(proxyProvidersViewProvider).value ?? const [];
     final tab = providers.isEmpty ? _ProxiesTab.groups : _tab;
     // GLOBAL only matters (and is only shown) in global mode.
-    final globalMode = ref.watch(
-      coreConfigProvider.select((c) => c.value?.mode == TunnelMode.global),
-    );
+    final globalMode = ref.watch(proxyGlobalModeViewProvider);
+    final actions = ref.read(proxyActionsProvider);
 
     final groupCount = proxies.value?.groupNames
         .where((name) => name != 'GLOBAL' || globalMode)
@@ -63,9 +60,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         _ProxiesTab.providers => l10n.proxyProvidersCount(providers.length),
       },
       onRefresh: () => switch (tab) {
-        _ProxiesTab.groups => ref.read(proxiesProvider.notifier).reload(),
-        _ProxiesTab.providers =>
-          ref.read(proxyProvidersProvider.notifier).reload(),
+        _ProxiesTab.groups => actions.reloadGroups(),
+        _ProxiesTab.providers => actions.reloadProviders(),
       },
       actions: widget.actions,
       showShellActions: widget.showShellActions,
@@ -106,10 +102,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
             AsyncData(:final value) => _groups(context, value, globalMode),
             AsyncError(:final error) => SliverFillRemaining(
               hasScrollBody: false,
-              child: ErrorView(
-                error: error,
-                onRetry: () => ref.invalidate(proxiesProvider),
-              ),
+              child: ErrorView(error: error, onRetry: actions.reloadGroups),
             ),
             _ => const SliverFillRemaining(
               hasScrollBody: false,

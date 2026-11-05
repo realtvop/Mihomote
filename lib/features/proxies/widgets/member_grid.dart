@@ -27,7 +27,7 @@ class MemberGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final testing = ref.watch(delayTestingProvider);
+    final testing = ref.watch(delayTestingViewProvider);
     final onSelect = this.onSelect;
     return LayoutBuilder(
       builder: (context, constraints) {

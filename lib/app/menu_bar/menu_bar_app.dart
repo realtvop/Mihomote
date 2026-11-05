@@ -5,10 +5,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/mihomo/mihomo_api.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/state/core_providers.dart';
-import '../../core/storage/preferences.dart';
 import '../../features/proxies/proxies_page.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
@@ -18,29 +15,34 @@ import '../theme/app_theme.dart';
 import '../theme/seed_colors.dart';
 import '../theme/semantic_colors.dart';
 import 'menu_bar_bridge.dart';
+import 'menu_bar_shared_data.dart';
 
-/// Owns the menu-bar engine's provider container and rebuilds it after the
-/// main window changes shared settings or the active backend.
-class MenuBarBootstrap extends StatefulWidget {
+/// Receives shared settings and main-engine state for the menu-bar surface.
+class MenuBarBootstrap extends ConsumerStatefulWidget {
   const MenuBarBootstrap({super.key, required this.preferences});
 
   final SharedPreferencesWithCache preferences;
 
   @override
-  State<MenuBarBootstrap> createState() => _MenuBarBootstrapState();
+  ConsumerState<MenuBarBootstrap> createState() => _MenuBarBootstrapState();
 }
 
-class _MenuBarBootstrapState extends State<MenuBarBootstrap> {
-  var _generation = 0;
-
+class _MenuBarBootstrapState extends ConsumerState<MenuBarBootstrap> {
   @override
   void initState() {
     super.initState();
     MenuBarBridge.channel.setMethodCallHandler((call) async {
-      if (call.method != 'preferencesChanged') return;
-      await widget.preferences.reloadCache();
-      if (mounted) setState(() => _generation++);
+      switch (call.method) {
+        case 'preferencesChanged':
+          await widget.preferences.reloadCache();
+          ref.invalidate(appSettingsProvider);
+          break;
+        case 'hostSnapshot':
+          ref.read(menuBarSharedStateProvider.notifier).apply(call.arguments);
+          break;
+      }
     });
+    unawaited(MenuBarBridge.ready());
   }
 
   @override
@@ -51,13 +53,7 @@ class _MenuBarBootstrapState extends State<MenuBarBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    return ProviderScope(
-      key: ValueKey(_generation),
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(widget.preferences),
-      ],
-      child: const MenuBarApp(),
-    );
+    return const MenuBarProxyScope(child: MenuBarApp());
   }
 }
 
@@ -122,16 +118,14 @@ class _MenuBarAppState extends ConsumerState<MenuBarApp> {
   }
 }
 
-class _MenuBarProxiesSurface extends ConsumerStatefulWidget {
+class _MenuBarProxiesSurface extends StatefulWidget {
   const _MenuBarProxiesSurface();
 
   @override
-  ConsumerState<_MenuBarProxiesSurface> createState() =>
-      _MenuBarProxiesSurfaceState();
+  State<_MenuBarProxiesSurface> createState() => _MenuBarProxiesSurfaceState();
 }
 
-class _MenuBarProxiesSurfaceState
-    extends ConsumerState<_MenuBarProxiesSurface> {
+class _MenuBarProxiesSurfaceState extends State<_MenuBarProxiesSurface> {
   String? _configuredLocale;
 
   @override
@@ -152,12 +146,6 @@ class _MenuBarProxiesSurfaceState
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<TrafficSample>>(trafficProvider, (_, next) {
-      final sample = next.value;
-      if (sample != null) {
-        unawaited(MenuBarBridge.publishTraffic(sample));
-      }
-    });
     return ProxiesPage(
       showShellActions: false,
       showPageHeader: false,
@@ -172,8 +160,8 @@ class _LiveSummary extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final traffic = ref.watch(trafficProvider).value;
-    final connections = ref.watch(connectionsStreamProvider).value;
+    final shared = ref.watch(menuBarSharedStateProvider);
+    final traffic = shared.traffic;
     return Padding(
       padding: pageGutter(context).copyWith(top: 12, bottom: 8),
       child: M3ECard(
@@ -197,7 +185,7 @@ class _LiveSummary extends ConsumerWidget {
             Expanded(
               child: _SummaryValue(
                 label: l10n.overviewConnections,
-                value: connections?.connections.length.toString() ?? '—',
+                value: shared.connectionCount?.toString() ?? '—',
               ),
             ),
             M3EIconButton(

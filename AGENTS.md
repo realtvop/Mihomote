@@ -80,13 +80,13 @@
 - [x] iOS 侧滑返回接线完成：`router.dart` 向 `AdaptiveShell` 提供设置页，`adaptive_shell.dart` 管理压栈、返回和窗口断点同步。`pages_smoke_test.dart` 新增 6 个 iOS 回归测试，覆盖跟手与取消、返回原页及再次打开、后端菜单入口、直接导航、窄 / 中 / 宽屏切换、减少动态效果和删除最后一个后端后的重定向；模拟器包已编译并安装，本次手势交互检查未完成，按用户要求停止后续测试并提交
 - [x] 应用级滚动策略禁止鼠标拖动页面（包括 M3E 下拉刷新内部覆盖的滚动配置），保留触屏拖动、触控板与鼠标滚轮滚动；widget 测试覆盖鼠标不能滚动 / 刷新且触摸仍可滚动
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步
-- [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。主窗口关闭后菜单栏入口继续运行，共享设置或当前后端变化时会重载小窗 provider
+- [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。网络连接和可变状态只由主 engine 的一套 provider 持有，原生通道向小窗转发代理、代理集、流量、连接数和操作中状态，并把小窗操作送回主 engine 的同一组 notifier，因此主界面与小窗的本地操作会双向同步且不会创建第二套 Mihomo 连接；共享设置变化仍会让小窗刷新主题和语言
 - [x] 应用图标设计：`assets/icon/mihomote.svg` 用默认靛蓝色与白色的 M 形连接线、端点组成简洁图标；同目录提供 1024 / 512 / 256 PNG、不透明正方形版本，以及基于 ImageMagick 7 的 `export.sh`。当前为设计资产，各平台启动图标接入和启动屏待完成
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
   - 编译通过：`flutter build web --wasm`、`flutter build macos --debug`（macOS 标题栏融合后）；iOS Debug 模拟器包（侧滑适配后，用临时 Debug scheme 执行 `xcodebuild`，保留原 Runner 的 Release 启动配置）
-  - `flutter analyze` 无问题；`flutter test`：68 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；滚动测试约束鼠标拖动不能滚动或下拉刷新，同时保留触摸拖动；macOS 窗口测试覆盖原生标题栏高度及首帧兜底；菜单栏小窗测试覆盖代理页、连接统计、流量上报和打开主窗口桥接；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
+  - `flutter analyze` 无问题；`flutter test`：69 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；滚动测试约束鼠标拖动不能滚动或下拉刷新，同时保留触摸拖动；macOS 窗口测试覆盖原生标题栏高度及首帧兜底；菜单栏小窗测试覆盖主 engine 状态快照、无独立后端时的代理页与连接统计、操作回传、错误类型保留和打开主窗口桥接；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -179,7 +179,7 @@
 - 部署：Web 构建产物可以直接作为 Mihomo 的 `external-ui`（同源访问，没有 CORS 和混合内容问题）。
 
 ### 3.4 平台配置（已在原生工程中设置，改动时注意保留）
-- **macOS**：`DebugProfile.entitlements` 和 `Release.entitlements` 都要有 `com.apple.security.network.client`（沙盒下访问网络必需）。`MainFlutterWindow.swift` 配置透明全尺寸标题栏，并通过 `app.mihomote/window_chrome` 通道向 Flutter 同步标题栏高度；Flutter 侧由 `lib/app/macos_window_chrome.dart` 注入安全区，改动窗口样式时两边要一起检查。`AppDelegate.swift` 还持有原生 `NSStatusItem` 和运行 `menuBarMain` 的独立 Flutter engine，通过 `app.mihomote/menu_bar` 与 `lib/app/menu_bar/` 双向同步流量、菜单文案、主窗口操作和共享偏好变化；关闭主窗口不会退出应用，退出入口在状态项右键菜单。
+- **macOS**：`DebugProfile.entitlements` 和 `Release.entitlements` 都要有 `com.apple.security.network.client`（沙盒下访问网络必需）。`MainFlutterWindow.swift` 配置透明全尺寸标题栏，并通过 `app.mihomote/window_chrome` 通道向 Flutter 同步标题栏高度；Flutter 侧由 `lib/app/macos_window_chrome.dart` 注入安全区，改动窗口样式时两边要一起检查。`AppDelegate.swift` 还持有原生 `NSStatusItem` 和运行 `menuBarMain` 的独立 Flutter engine。`app.mihomote/menu_bar_host` 在主 engine 与原生层之间传递唯一一套 Mihomo provider 状态和操作，原生层再用 `app.mihomote/menu_bar` 与小窗 engine 转发快照、操作、菜单文案、主窗口命令和共享偏好变化；小窗 engine 不读取 `mihomoApiProvider`，不得自行建立 REST / WebSocket 连接。关闭主窗口不会退出应用，退出入口在状态项右键菜单。
 - **Android**：主 `AndroidManifest.xml` 声明 `INTERNET` 权限，并设置 `android:usesCleartextTraffic="true"`（控制器通常是局域网里的明文 HTTP）。
 - **iOS**：`Info.plist` 里配置 `NSAppTransportSecurity > NSAllowsArbitraryLoads`（明文 HTTP）和 `NSLocalNetworkUsageDescription`（访问局域网设备）。
 

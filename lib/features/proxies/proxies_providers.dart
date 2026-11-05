@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/backends/backends_providers.dart';
 import '../../core/mihomo/mihomo_api.dart';
+import '../../core/state/core_providers.dart';
 
 @immutable
 class ProxiesState {
@@ -205,6 +206,75 @@ final updatingProxyProvidersProvider =
 /// Proxy providers with a health check in flight.
 final checkingProxyProvidersProvider =
     NotifierProvider<BusyNamesNotifier, Set<String>>(BusyNamesNotifier.new);
+
+/// Data and operations consumed by the proxy UI.
+///
+/// The main app uses the local Notifiers below. The macOS menu-bar engine
+/// overrides these facade providers with snapshots and commands forwarded by
+/// the main engine, so it never creates a second [MihomoApi].
+final proxiesViewProvider = Provider<AsyncValue<ProxiesState>>(
+  (ref) => ref.watch(proxiesProvider),
+);
+
+final proxyProvidersViewProvider = Provider<AsyncValue<List<ProxyProvider>>>(
+  (ref) => ref.watch(proxyProvidersProvider),
+);
+
+final proxyGlobalModeViewProvider = Provider<bool>(
+  (ref) => ref.watch(
+    coreConfigProvider.select(
+      (config) => config.value?.mode == TunnelMode.global,
+    ),
+  ),
+);
+
+final delayTestingViewProvider = Provider<Set<String>>(
+  (ref) => ref.watch(delayTestingProvider),
+);
+
+final updatingProxyProvidersViewProvider = Provider<Set<String>>(
+  (ref) => ref.watch(updatingProxyProvidersProvider),
+);
+
+final checkingProxyProvidersViewProvider = Provider<Set<String>>(
+  (ref) => ref.watch(checkingProxyProvidersProvider),
+);
+
+class ProxyActions {
+  const ProxyActions({
+    required this.reloadGroups,
+    required this.reloadProviders,
+    required this.select,
+    required this.testGroup,
+    required this.testNode,
+    required this.updateProvider,
+    required this.healthCheckProvider,
+  });
+
+  final Future<void> Function() reloadGroups;
+  final Future<void> Function() reloadProviders;
+  final Future<void> Function(String group, String name) select;
+  final Future<void> Function(String group) testGroup;
+  final Future<void> Function(String name, {String? url}) testNode;
+  final Future<void> Function(String name) updateProvider;
+  final Future<void> Function(String name) healthCheckProvider;
+}
+
+final proxyActionsProvider = Provider<ProxyActions>(
+  (ref) => ProxyActions(
+    reloadGroups: () => ref.read(proxiesProvider.notifier).reload(),
+    reloadProviders: () => ref.read(proxyProvidersProvider.notifier).reload(),
+    select: (group, name) =>
+        ref.read(proxiesProvider.notifier).select(group, name),
+    testGroup: (group) => ref.read(proxiesProvider.notifier).testGroup(group),
+    testNode: (name, {url}) =>
+        ref.read(proxiesProvider.notifier).testNode(name, url: url),
+    updateProvider: (name) =>
+        ref.read(proxyProvidersProvider.notifier).updateProvider(name),
+    healthCheckProvider: (name) =>
+        ref.read(proxyProvidersProvider.notifier).healthCheck(name),
+  ),
+);
 
 /// Which cards are expanded, kept across tab switches.
 class ExpandedNamesNotifier extends Notifier<Set<String>> {

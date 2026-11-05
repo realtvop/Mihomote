@@ -4,6 +4,7 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   private var menuBarController: MenuBarController?
+  private var menuBarHostEngine: FlutterEngine?
 
   override func awakeFromNib() {
     super.awakeFromNib()
@@ -11,6 +12,9 @@ class AppDelegate: FlutterAppDelegate {
     // connect the delegate after the did-finish-launching notification, while
     // awakeFromNib is guaranteed to run for the actual delegate instance.
     menuBarController = MenuBarController()
+    if let menuBarHostEngine {
+      menuBarController?.attachHost(to: menuBarHostEngine)
+    }
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -22,10 +26,16 @@ class AppDelegate: FlutterAppDelegate {
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     return true
   }
+
+  func attachMenuBarHost(to engine: FlutterEngine) {
+    menuBarHostEngine = engine
+    menuBarController?.attachHost(to: engine)
+  }
 }
 
 private final class MenuBarController: NSObject, NSPopoverDelegate {
   private static let channelName = "app.mihomote/menu_bar"
+  private static let hostChannelName = "app.mihomote/menu_bar_host"
   private static let showTrafficKey = "menuBar.showTraffic"
 
   private let statusItem = NSStatusBar.system.statusItem(
@@ -43,6 +53,8 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   )
 
   private var channel: FlutterMethodChannel?
+  private var hostChannel: FlutterMethodChannel?
+  private var hostSnapshots: [String: [String: Any]] = [:]
   private var preferencesObserver: NSObjectProtocol?
   private var preferencesWorkItem: DispatchWorkItem?
   private var latestUp = 0
@@ -66,7 +78,37 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     if let preferencesObserver {
       NotificationCenter.default.removeObserver(preferencesObserver)
     }
+    hostChannel?.setMethodCallHandler(nil)
     engine.shutDownEngine()
+  }
+
+  func attachHost(to engine: FlutterEngine) {
+    let channel = FlutterMethodChannel(
+      name: Self.hostChannelName,
+      binaryMessenger: engine.binaryMessenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else {
+        result(nil)
+        return
+      }
+      guard call.method == "publish",
+            let snapshot = call.arguments as? [String: Any],
+            let topic = snapshot["topic"] as? String else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      self.hostSnapshots[topic] = snapshot
+      if topic == "traffic" {
+        let traffic = snapshot["value"] as? [String: Any]
+        self.latestUp = (traffic?["up"] as? NSNumber)?.intValue ?? 0
+        self.latestDown = (traffic?["down"] as? NSNumber)?.intValue ?? 0
+        self.updateStatusTitle()
+      }
+      self.channel?.invokeMethod("hostSnapshot", arguments: snapshot)
+      result(nil)
+    }
+    hostChannel = channel
   }
 
   private func configureStatusItem() {
@@ -144,16 +186,28 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
           self.quitItem.title = labels["quit"] as? String ?? self.quitItem.title
         }
         result(nil)
-      case "updateTraffic":
-        if let traffic = call.arguments as? [String: Any] {
-          self.latestUp = (traffic["up"] as? NSNumber)?.intValue ?? 0
-          self.latestDown = (traffic["down"] as? NSNumber)?.intValue ?? 0
-          self.updateStatusTitle()
-        }
-        result(nil)
       case "openMainWindow":
         self.openMainWindow()
         result(nil)
+      case "menuReady":
+        for snapshot in self.hostSnapshots.values {
+          self.channel?.invokeMethod("hostSnapshot", arguments: snapshot)
+        }
+        result(nil)
+      case "hostCall":
+        guard let hostChannel = self.hostChannel else {
+          result(
+            FlutterError(
+              code: "unknown",
+              message: "Main window data host is unavailable",
+              details: nil
+            )
+          )
+          return
+        }
+        hostChannel.invokeMethod("call", arguments: call.arguments) {
+          response in result(response)
+        }
       default:
         result(FlutterMethodNotImplemented)
       }

@@ -16,10 +16,32 @@ abstract final class MenuBarBridge {
     'quit': quit,
   });
 
-  static Future<void> publishTraffic(TrafficSample sample) =>
-      _invoke('updateTraffic', {'up': sample.up, 'down': sample.down});
-
   static Future<void> openMainWindow() => _invoke('openMainWindow');
+
+  static Future<void> ready() => _invoke('menuReady');
+
+  static Future<void> hostCall(
+    String method, [
+    JsonMap arguments = const {},
+  ]) async {
+    try {
+      await channel.invokeMethod<void>('hostCall', {
+        'method': method,
+        'arguments': arguments,
+      });
+    } on PlatformException catch (error) {
+      throw MihomoException(
+        MihomoErrorKind.values.asNameMap()[error.code] ??
+            MihomoErrorKind.unknown,
+        error.message,
+      );
+    } on MissingPluginException {
+      throw const MihomoException(
+        MihomoErrorKind.unknown,
+        'Main window data host is unavailable',
+      );
+    }
+  }
 
   static Future<void> _invoke(String method, [Object? arguments]) async {
     try {

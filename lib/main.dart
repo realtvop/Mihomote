@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'app/menu_bar/menu_bar_app.dart';
+import 'app/menu_bar/menu_bar_data_host.dart';
 import 'core/storage/preferences.dart';
 
 Future<void> main() async {
@@ -19,7 +20,7 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      child: const MihomoteApp(),
+      child: const MenuBarDataHost(child: MihomoteApp()),
     ),
   );
 }
@@ -31,5 +32,10 @@ Future<void> menuBarMain() async {
   final prefs = await SharedPreferencesWithCache.create(
     cacheOptions: const SharedPreferencesWithCacheOptions(),
   );
-  runApp(MenuBarBootstrap(preferences: prefs));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: MenuBarBootstrap(preferences: prefs),
+    ),
+  );
 }

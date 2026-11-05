@@ -24,9 +24,9 @@ class ProxyGroupCard extends ConsumerWidget {
       expandedGroupsProvider.select((s) => s.contains(group.name)),
     );
     final testing = ref.watch(
-      delayTestingProvider.select((s) => s.contains(group.name)),
+      delayTestingViewProvider.select((s) => s.contains(group.name)),
     );
-    final notifier = ref.read(proxiesProvider.notifier);
+    final actions = ref.read(proxyActionsProvider);
 
     Future<void> run(Future<void> Function() action) async {
       try {
@@ -51,7 +51,7 @@ class ProxyGroupCard extends ConsumerWidget {
           icon: Icons.speed_rounded,
           tooltip: l10n.proxiesTestLatency,
           busy: testing,
-          onPressed: () => run(() => notifier.testGroup(group.name)),
+          onPressed: () => run(() => actions.testGroup(group.name)),
         ),
       ],
       summary: _Summary(state: state, group: group),
@@ -68,10 +68,10 @@ class ProxyGroupCard extends ConsumerWidget {
           ],
           selected: group.now,
           onSelect: group.isSelectable
-              ? (name) => run(() => notifier.select(group.name, name))
+              ? (name) => run(() => actions.select(group.name, name))
               : null,
           onTest: (name) =>
-              run(() => notifier.testNode(name, url: group.testUrl)),
+              run(() => actions.testNode(name, url: group.testUrl)),
         ),
       ),
     );
