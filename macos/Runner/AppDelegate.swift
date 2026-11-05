@@ -37,7 +37,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private static let channelName = "app.mihomote/menu_bar"
   private static let hostChannelName = "app.mihomote/menu_bar_host"
   private static let showTrafficKey = "menuBar.showTraffic"
-  private static let trafficStatusItemLength: CGFloat = 104
+  private static let trafficStatusItemLength: CGFloat = 80
 
   private let statusItem = NSStatusBar.system.statusItem(
     withLength: NSStatusItem.variableLength
@@ -47,6 +47,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private let openMainWindowItem = NSMenuItem()
   private let quitItem = NSMenuItem()
   private let popover = NSPopover()
+  private let trafficContentView = StatusItemTrafficContentView()
   private let engine = FlutterEngine(
     name: "mihomote-menu-bar",
     project: nil,
@@ -121,12 +122,14 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     image?.isTemplate = true
     button.image = image
     hasStatusImage = image != nil
-    button.imagePosition = .imageLeading
-    button.alignment = .left
-    button.font = NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium)
-    button.cell?.usesSingleLineMode = false
-    button.cell?.wraps = true
-    button.cell?.lineBreakMode = .byClipping
+    button.imagePosition = .imageOnly
+    button.addSubview(trafficContentView)
+    NSLayoutConstraint.activate([
+      trafficContentView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+      trafficContentView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+      trafficContentView.topAnchor.constraint(equalTo: button.topAnchor),
+      trafficContentView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
+    ])
     button.toolTip = "Mihomote"
     button.target = self
     button.action = #selector(statusItemPressed(_:))
@@ -298,19 +301,34 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     guard let button = statusItem.button else { return }
     if showTraffic {
       // Keep the popover anchor stable while live values change. Two compact
-      // lines also use less horizontal menu-bar space than the old title.
+      // lines are centered by a dedicated view because NSButtonCell lays out
+      // newline titles against a single-line baseline near the top edge.
       statusItem.length = Self.trafficStatusItemLength
-      button.title = "↑\(Self.formatSpeed(latestUp))\n↓\(Self.formatSpeed(latestDown))"
+      button.image = nil
+      button.title = ""
+      trafficContentView.isHidden = false
+      trafficContentView.setSpeeds(
+        up: Self.formatSpeed(latestUp),
+        down: Self.formatSpeed(latestDown)
+      )
     } else if hasStatusImage {
       // A variable-length item with only an image can collapse to zero width
       // on some macOS/menu-bar layouts. The standard square slot guarantees
       // that the template icon remains visible.
       statusItem.length = NSStatusItem.squareLength
+      trafficContentView.isHidden = true
+      button.image = NSImage(
+        systemSymbolName: "network",
+        accessibilityDescription: "Mihomote"
+      )
+      button.image?.isTemplate = true
       button.title = ""
     } else {
       // SF Symbols should always contain `network` on the supported macOS
       // versions, but keep the status item discoverable if loading fails.
       statusItem.length = NSStatusItem.variableLength
+      trafficContentView.isHidden = true
+      button.image = nil
       button.title = "M"
     }
   }
@@ -325,5 +343,65 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     }
     let digits = unit == 0 ? 0 : (value >= 100 ? 0 : (value >= 10 ? 1 : 2))
     return String(format: "%.*f %@", digits, value, units[unit])
+  }
+}
+
+/// Draws the traffic readout independently from `NSButtonCell` so its two
+/// lines stay vertically centered inside the status-bar button. Returning nil
+/// from hit testing keeps all left/right clicks on the native button.
+private final class StatusItemTrafficContentView: NSView {
+  private let speedLabel = NSTextField(labelWithString: "")
+
+  override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    translatesAutoresizingMaskIntoConstraints = false
+
+    let imageView = NSImageView()
+    let image = NSImage(
+      systemSymbolName: "network",
+      accessibilityDescription: nil
+    )
+    image?.isTemplate = true
+    imageView.image = image
+    imageView.contentTintColor = .labelColor
+    imageView.translatesAutoresizingMaskIntoConstraints = false
+
+    speedLabel.font = NSFont.monospacedDigitSystemFont(
+      ofSize: 8,
+      weight: .medium
+    )
+    speedLabel.textColor = .labelColor
+    speedLabel.alignment = .left
+    speedLabel.maximumNumberOfLines = 2
+    speedLabel.lineBreakMode = .byClipping
+    speedLabel.translatesAutoresizingMaskIntoConstraints = false
+
+    let content = NSStackView(views: [imageView, speedLabel])
+    content.orientation = .horizontal
+    content.alignment = .centerY
+    content.spacing = 3
+    content.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(content)
+
+    NSLayoutConstraint.activate([
+      imageView.widthAnchor.constraint(equalToConstant: 14),
+      imageView.heightAnchor.constraint(equalToConstant: 14),
+      content.centerXAnchor.constraint(equalTo: centerXAnchor),
+      content.centerYAnchor.constraint(equalTo: centerYAnchor),
+      content.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 3),
+      content.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -3),
+    ])
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    nil
+  }
+
+  func setSpeeds(up: String, down: String) {
+    speedLabel.stringValue = "↑\(up)\n↓\(down)"
   }
 }
