@@ -5,8 +5,11 @@ import FlutterMacOS
 class AppDelegate: FlutterAppDelegate {
   private var menuBarController: MenuBarController?
 
-  override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
+  override func awakeFromNib() {
+    super.awakeFromNib()
+    // This delegate is instantiated by MainMenu.xib. In that setup AppKit can
+    // connect the delegate after the did-finish-launching notification, while
+    // awakeFromNib is guaranteed to run for the actual delegate instance.
     menuBarController = MenuBarController()
   }
 
