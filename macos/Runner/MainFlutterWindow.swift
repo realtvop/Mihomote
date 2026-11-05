@@ -52,6 +52,15 @@ class MainFlutterWindow: NSWindow {
         self?.publishTitlebarHeight()
       }
     }
+
+    // The status item starts a secondary Flutter engine during nib loading.
+    // Reassert the regular app window after that launch work has completed so
+    // the first frame is keyboard-active instead of leaving focus elsewhere.
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      NSApp.activate(ignoringOtherApps: true)
+      self.makeKeyAndOrderFront(nil)
+    }
   }
 
   deinit {
