@@ -37,6 +37,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private static let channelName = "app.mihomote/menu_bar"
   private static let hostChannelName = "app.mihomote/menu_bar_host"
   private static let showTrafficKey = "menuBar.showTraffic"
+  private static let trafficStatusItemLength: CGFloat = 104
 
   private let statusItem = NSStatusBar.system.statusItem(
     withLength: NSStatusItem.variableLength
@@ -121,7 +122,11 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     button.image = image
     hasStatusImage = image != nil
     button.imagePosition = .imageLeading
-    button.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+    button.alignment = .left
+    button.font = NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium)
+    button.cell?.usesSingleLineMode = false
+    button.cell?.wraps = true
+    button.cell?.lineBreakMode = .byClipping
     button.toolTip = "Mihomote"
     button.target = self
     button.action = #selector(statusItemPressed(_:))
@@ -235,11 +240,13 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     guard let event = NSApp.currentEvent else { return }
     if event.type == .rightMouseUp {
       popover.performClose(nil)
+      sender.highlight(true)
       menu.popUp(
         positioning: nil,
         at: NSPoint(x: 0, y: sender.bounds.height + 2),
         in: sender
       )
+      sender.highlight(false)
       return
     }
 
@@ -252,7 +259,19 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
         preferredEdge: .minY
       )
       popover.contentViewController?.view.window?.makeKey()
+      DispatchQueue.main.async { [weak self] in
+        guard let self, self.popover.isShown else { return }
+        self.statusItem.button?.highlight(true)
+      }
     }
+  }
+
+  func popoverDidShow(_ notification: Notification) {
+    statusItem.button?.highlight(true)
+  }
+
+  func popoverDidClose(_ notification: Notification) {
+    statusItem.button?.highlight(false)
   }
 
   @objc private func toggleTraffic() {
@@ -278,8 +297,10 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private func updateStatusTitle() {
     guard let button = statusItem.button else { return }
     if showTraffic {
-      statusItem.length = NSStatusItem.variableLength
-      button.title = " ↑\(Self.formatSpeed(latestUp)) ↓\(Self.formatSpeed(latestDown))"
+      // Keep the popover anchor stable while live values change. Two compact
+      // lines also use less horizontal menu-bar space than the old title.
+      statusItem.length = Self.trafficStatusItemLength
+      button.title = "↑\(Self.formatSpeed(latestUp))\n↓\(Self.formatSpeed(latestDown))"
     } else if hasStatusImage {
       // A variable-length item with only an image can collapse to zero width
       // on some macOS/menu-bar layouts. The standard square slot guarantees

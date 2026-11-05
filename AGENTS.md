@@ -82,7 +82,7 @@
 - [x] 代理分组卡片显示实时下载 / 上传速度：复用连接快照按相邻字节增量计算，并按实际代理链归集到经过的每级分组；展开后仍持续显示。macOS 菜单栏小窗由主 engine 透传同一份分组网速，不新建内核连接
 - [x] 应用级滚动策略禁止鼠标拖动页面（包括 M3E 下拉刷新内部覆盖的滚动配置），保留触屏拖动、触控板与鼠标滚轮滚动；widget 测试覆盖鼠标不能滚动 / 刷新且触摸仍可滚动
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步
-- [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。网络连接和可变状态只由主 engine 的一套 provider 持有，原生通道向小窗转发代理、代理集、流量、连接数和操作中状态，并把小窗操作送回主 engine 的同一组 notifier，因此主界面与小窗的本地操作会双向同步且不会创建第二套 Mihomo 连接；共享设置变化仍会让小窗刷新主题和语言
+- [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。菜单栏流量用固定宽度的上下两行显示，数值变化不会推动小窗位置，小窗或原生右键菜单打开时状态项保持系统高亮。网络连接和可变状态只由主 engine 的一套 provider 持有，原生通道向小窗转发代理、代理集、流量、连接数和操作中状态，并把小窗操作送回主 engine 的同一组 notifier，因此主界面与小窗的本地操作会双向同步且不会创建第二套 Mihomo 连接；共享设置变化仍会让小窗刷新主题和语言
 - [x] 应用图标设计：`assets/icon/mihomote.svg` 用默认靛蓝色与白色的 M 形连接线、端点组成简洁图标；同目录提供 1024 / 512 / 256 PNG、不透明正方形版本，以及基于 ImageMagick 7 的 `export.sh`。当前为设计资产，各平台启动图标接入和启动屏待完成
 - [x] GitHub Actions 构建：`.github/workflows/build.yml` 在 push 和手动触发时运行 analyze / test，并上传 Android APK、Windows x64 安装版和便携版、macOS app、未签名 iOS IPA、Linux x86_64 AppImage 和 Web WASM；Flutter 固定 3.47.7，安装器配置在 `windows/installer.iss`，AppImage 桌面文件在 `linux/packaging/`。首次云端运行与各平台安装验证待完成
 - [x] **验证**（mock 数据）：
