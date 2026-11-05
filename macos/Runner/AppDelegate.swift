@@ -37,7 +37,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private static let channelName = "app.mihomote/menu_bar"
   private static let hostChannelName = "app.mihomote/menu_bar_host"
   private static let showTrafficKey = "menuBar.showTraffic"
-  private static let trafficStatusItemLength: CGFloat = 80
+  private static let trafficStatusItemLength: CGFloat = 72
 
   private let statusItem = NSStatusBar.system.statusItem(
     withLength: NSStatusItem.variableLength
@@ -123,13 +123,9 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
     button.image = image
     hasStatusImage = image != nil
     button.imagePosition = .imageOnly
+    trafficContentView.frame = button.bounds
+    trafficContentView.autoresizingMask = [.width, .height]
     button.addSubview(trafficContentView)
-    NSLayoutConstraint.activate([
-      trafficContentView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-      trafficContentView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
-      trafficContentView.topAnchor.constraint(equalTo: button.topAnchor),
-      trafficContentView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
-    ])
     button.toolTip = "Mihomote"
     button.target = self
     button.action = #selector(statusItemPressed(_:))
@@ -304,7 +300,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
       // lines are centered by a dedicated view because NSButtonCell lays out
       // newline titles against a single-line baseline near the top edge.
       statusItem.length = Self.trafficStatusItemLength
-      button.image = nil
+      button.imagePosition = .noImage
       button.title = ""
       trafficContentView.isHidden = false
       trafficContentView.setSpeeds(
@@ -322,6 +318,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
         accessibilityDescription: "Mihomote"
       )
       button.image?.isTemplate = true
+      button.imagePosition = .imageOnly
       button.title = ""
     } else {
       // SF Symbols should always contain `network` on the supported macOS
@@ -329,6 +326,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
       statusItem.length = NSStatusItem.variableLength
       trafficContentView.isHidden = true
       button.image = nil
+      button.imagePosition = .noImage
       button.title = "M"
     }
   }
@@ -347,16 +345,18 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
 }
 
 /// Draws the traffic readout independently from `NSButtonCell` so its two
-/// lines stay vertically centered inside the status-bar button. Returning nil
-/// from hit testing keeps all left/right clicks on the native button.
+/// lines stay vertically centered inside the status-bar button and left-aligned
+/// to keep the icon stationary. Frame-based layout ensures the host button's
+/// height never collapses under Auto Layout. Returning nil from hit testing
+/// forwards all clicks to the native button.
 private final class StatusItemTrafficContentView: NSView {
   private let speedLabel = NSTextField(labelWithString: "")
+  private let imageView = NSImageView()
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
-    translatesAutoresizingMaskIntoConstraints = false
+    autoresizingMask = [.width, .height]
 
-    let imageView = NSImageView()
     let image = NSImage(
       systemSymbolName: "network",
       accessibilityDescription: nil
@@ -364,7 +364,7 @@ private final class StatusItemTrafficContentView: NSView {
     image?.isTemplate = true
     imageView.image = image
     imageView.contentTintColor = .labelColor
-    imageView.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(imageView)
 
     speedLabel.font = NSFont.monospacedDigitSystemFont(
       ofSize: 8,
@@ -374,27 +374,39 @@ private final class StatusItemTrafficContentView: NSView {
     speedLabel.alignment = .left
     speedLabel.maximumNumberOfLines = 2
     speedLabel.lineBreakMode = .byClipping
-    speedLabel.translatesAutoresizingMaskIntoConstraints = false
-
-    let content = NSStackView(views: [imageView, speedLabel])
-    content.orientation = .horizontal
-    content.alignment = .centerY
-    content.spacing = 3
-    content.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(content)
-
-    NSLayoutConstraint.activate([
-      imageView.widthAnchor.constraint(equalToConstant: 14),
-      imageView.heightAnchor.constraint(equalToConstant: 14),
-      content.centerXAnchor.constraint(equalTo: centerXAnchor),
-      content.centerYAnchor.constraint(equalTo: centerYAnchor),
-      content.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 3),
-      content.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -3),
-    ])
+    speedLabel.isBezeled = false
+    speedLabel.drawsBackground = false
+    speedLabel.isEditable = false
+    speedLabel.isSelectable = false
+    addSubview(speedLabel)
   }
 
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
+  }
+
+  override func layout() {
+    super.layout()
+    let h = bounds.height
+    let iconSize: CGFloat = 14
+    let leftMargin: CGFloat = 3
+    let spacing: CGFloat = 2
+
+    imageView.frame = NSRect(
+      x: leftMargin,
+      y: floor((h - iconSize) / 2),
+      width: iconSize,
+      height: iconSize
+    )
+
+    let labelX = leftMargin + iconSize + spacing
+    let labelHeight: CGFloat = 20
+    speedLabel.frame = NSRect(
+      x: labelX,
+      y: floor((h - labelHeight) / 2),
+      width: max(0, bounds.width - labelX - 1),
+      height: labelHeight
+    )
   }
 
   override func hitTest(_ point: NSPoint) -> NSView? {
@@ -402,6 +414,6 @@ private final class StatusItemTrafficContentView: NSView {
   }
 
   func setSpeeds(up: String, down: String) {
-    speedLabel.stringValue = "↑\(up)\n↓\(down)"
+    speedLabel.stringValue = "↑ \(up)\n↓ \(down)"
   }
 }
