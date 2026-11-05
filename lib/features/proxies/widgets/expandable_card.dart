@@ -100,6 +100,10 @@ class ExpandableCard extends StatelessWidget {
               M3ECard(
                 variant: M3ECardVariant.filled,
                 color: Colors.transparent,
+                // A filled card normally rises on hover. This card is only a
+                // transparent hit target, so its shadow would show through as
+                // a dark fill across the header on pointer devices.
+                elevation: 0,
                 borderRadius: BorderRadius.zero,
                 padding: EdgeInsets.zero,
                 onPressed: onToggle,

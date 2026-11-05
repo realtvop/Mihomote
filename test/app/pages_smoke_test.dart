@@ -307,6 +307,26 @@ void main() {
     }
   }
 
+  testWidgets('proxy card transparent hit target stays flat on hover', (
+    tester,
+  ) async {
+    await _render(
+      tester,
+      size: _sizes['expanded']!,
+      withMockBackend: true,
+      route: AppRoutes.proxies,
+      verify: () {
+        final hitTargets = find.byWidgetPredicate(
+          (widget) => widget is M3ECard && widget.color == Colors.transparent,
+        );
+        expect(hitTargets, findsWidgets);
+        for (final element in hitTargets.evaluate()) {
+          expect((element.widget as M3ECard).elevation, 0);
+        }
+      },
+    );
+  });
+
   // Bottom sheet on compact, side sheet on expanded.
   for (final MapEntry(key: label, value: size) in _sizes.entries) {
     testWidgets('connection details open from the list ($label)', (
