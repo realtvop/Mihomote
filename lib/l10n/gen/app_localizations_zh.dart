@@ -82,6 +82,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchNoResults => '没有匹配的结果';
 
   @override
+  String get menuBarShowTraffic => '在菜单栏显示流量';
+
+  @override
+  String get menuBarOpenMainWindow => '打开 Mihomote';
+
+  @override
+  String get menuBarQuit => '退出 Mihomote';
+
+  @override
   String get errorNetwork => '连不上控制器，检查一下地址和网络';
 
   @override

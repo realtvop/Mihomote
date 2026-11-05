@@ -242,6 +242,24 @@ abstract class AppLocalizations {
   /// **'No matches'**
   String get searchNoResults;
 
+  /// No description provided for @menuBarShowTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Show traffic in menu bar'**
+  String get menuBarShowTraffic;
+
+  /// No description provided for @menuBarOpenMainWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Mihomote'**
+  String get menuBarOpenMainWindow;
+
+  /// No description provided for @menuBarQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit Mihomote'**
+  String get menuBarQuit;
+
   /// No description provided for @errorNetwork.
   ///
   /// In en, this message translates to:

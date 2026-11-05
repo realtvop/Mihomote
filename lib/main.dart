@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'app/menu_bar/menu_bar_app.dart';
 import 'core/storage/preferences.dart';
 
 Future<void> main() async {
@@ -21,4 +22,14 @@ Future<void> main() async {
       child: const MihomoteApp(),
     ),
   );
+}
+
+/// Secondary Dart entrypoint for the native macOS status-item popover.
+@pragma('vm:entry-point')
+Future<void> menuBarMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferencesWithCache.create(
+    cacheOptions: const SharedPreferencesWithCacheOptions(),
+  );
+  runApp(MenuBarBootstrap(preferences: prefs));
 }

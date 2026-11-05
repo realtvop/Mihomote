@@ -82,6 +82,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNoResults => 'No matches';
 
   @override
+  String get menuBarShowTraffic => 'Show traffic in menu bar';
+
+  @override
+  String get menuBarOpenMainWindow => 'Open Mihomote';
+
+  @override
+  String get menuBarQuit => 'Quit Mihomote';
+
+  @override
   String get errorNetwork =>
       'Can\'t reach the controller. Check the address and your network.';
 

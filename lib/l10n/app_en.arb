@@ -29,6 +29,10 @@
   "actionCopied": "Copied",
   "searchNoResults": "No matches",
 
+  "menuBarShowTraffic": "Show traffic in menu bar",
+  "menuBarOpenMainWindow": "Open Mihomote",
+  "menuBarQuit": "Quit Mihomote",
+
   "errorNetwork": "Can't reach the controller. Check the address and your network.",
   "errorUnauthorized": "The secret is wrong.",
   "errorNotFound": "Not found on the controller.",

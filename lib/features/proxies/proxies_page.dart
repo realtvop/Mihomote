@@ -17,7 +17,19 @@ import 'widgets/proxy_provider_card.dart';
 enum _ProxiesTab { groups, providers }
 
 class ProxiesPage extends ConsumerStatefulWidget {
-  const ProxiesPage({super.key});
+  const ProxiesPage({
+    super.key,
+    this.header,
+    this.actions = const [],
+    this.showShellActions = true,
+  });
+
+  /// Optional content between the page bar and the proxies tabs. The macOS
+  /// menu-bar window uses this for its compact live connection summary while
+  /// keeping the same proxy cards and interactions as the main app.
+  final Widget? header;
+  final List<Widget> actions;
+  final bool showShellActions;
 
   @override
   ConsumerState<ProxiesPage> createState() => _ProxiesPageState();
@@ -53,7 +65,10 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         _ProxiesTab.providers =>
           ref.read(proxyProvidersProvider.notifier).reload(),
       },
+      actions: widget.actions,
+      showShellActions: widget.showShellActions,
       slivers: [
+        if (widget.header case final header?) SliverToBoxAdapter(child: header),
         SliverToBoxAdapter(
           // Springs in when providers arrive instead of shoving the list.
           child: SpringReveal(

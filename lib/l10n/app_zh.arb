@@ -28,6 +28,10 @@
   "actionCopied": "已复制",
   "searchNoResults": "没有匹配的结果",
 
+  "menuBarShowTraffic": "在菜单栏显示流量",
+  "menuBarOpenMainWindow": "打开 Mihomote",
+  "menuBarQuit": "退出 Mihomote",
+
   "errorNetwork": "连不上控制器，检查一下地址和网络",
   "errorUnauthorized": "密钥不对",
   "errorNotFound": "控制器上找不到这个资源",
