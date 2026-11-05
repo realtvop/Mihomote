@@ -78,12 +78,13 @@
 - [x] 代理 / 规则页的页签、设置里的主题 / 语言选择全部由 `M3ESegmentedButton` 替换为连接式 `M3EButtonGroup`，保留原有选项和必选单选逻辑；冒烟测试通过可命中的文字定位按钮，排除按钮组内部的透明测量副本；`flutter analyze` 无问题，56 个测试（含窄 / 宽屏冒烟）全部通过
 - [x] 代理 / 规则页的未选中页签按钮显式使用 `scheme.card`，修复默认 `surfaceContainer` 与浅色页面背景同色的问题；选中态沿用组件主色
 - [x] iOS 侧滑返回接线完成：`router.dart` 向 `AdaptiveShell` 提供设置页，`adaptive_shell.dart` 管理压栈、返回和窗口断点同步。`pages_smoke_test.dart` 新增 6 个 iOS 回归测试，覆盖跟手与取消、返回原页及再次打开、后端菜单入口、直接导航、窄 / 中 / 宽屏切换、减少动态效果和删除最后一个后端后的重定向；模拟器包已编译并安装，本次手势交互检查未完成，按用户要求停止后续测试并提交
+- [x] 应用级滚动策略禁止鼠标拖动页面（包括 M3E 下拉刷新内部覆盖的滚动配置），保留触屏拖动、触控板与鼠标滚轮滚动；widget 测试覆盖鼠标不能滚动 / 刷新且触摸仍可滚动
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
   - 编译通过：`flutter build web --wasm`、`flutter build macos --debug`（macOS 标题栏融合后）；iOS Debug 模拟器包（侧滑适配后，用临时 Debug scheme 执行 `xcodebuild`，保留原 Runner 的 Release 启动配置）
-  - `flutter analyze` 无问题；`flutter test`：66 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；macOS 窗口测试覆盖原生标题栏高度及首帧兜底；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
+  - `flutter analyze` 无问题；`flutter test`：67 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查）；滚动测试约束鼠标拖动不能滚动或下拉刷新，同时保留触摸拖动；macOS 窗口测试覆盖原生标题栏高度及首帧兜底；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 覆盖代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
@@ -283,6 +284,7 @@ test/                         # 单元测试 / widget 测试（目录结构与 l
 ### 6.2 输入方式适配
 - **触屏**：点击目标不小于 48dp；次要操作放进长按菜单或 bottom sheet；列表支持下拉刷新。
 - **鼠标 / 键盘（桌面与 Web）**：要有 hover 状态和 tooltip；右键菜单与长按菜单提供同一组操作；可见滚动条；关键信息（IP、域名、规则）可以复制（连接详情点一行即复制，日志正文可选中）；键盘可以完成全部操作（焦点顺序、快捷键：`Ctrl/Cmd+1…6` 切换页面，`Ctrl/Cmd+F` 或 `/` 搜索，`Ctrl/Cmd+R` 刷新——计划中）。
+- **鼠标滚动**：只响应滚轮 / 触控板，不允许按住鼠标拖动页面，也不能用鼠标拖出下拉刷新；触屏拖动与下拉刷新保持可用。应用级约束在 `lib/app/scroll_behavior.dart`，组件不得局部重新加入 `PointerDeviceKind.mouse`。
 
 ### 6.3 颜色
 - 默认开启动态取色：Android 12+ 跟随壁纸，macOS / Windows 跟随系统强调色，其余平台用种子色兜底。设置里可以关闭动态取色并选择种子色预设（`lib/app/theme/`）。

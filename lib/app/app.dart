@@ -7,6 +7,7 @@ import '../core/settings/app_settings.dart';
 import '../shared/l10n.dart';
 import 'macos_window_chrome.dart';
 import 'router.dart';
+import 'scroll_behavior.dart';
 import 'theme/app_theme.dart';
 import 'theme/seed_colors.dart';
 
@@ -56,6 +57,7 @@ class _MihomoteAppState extends ConsumerState<MihomoteApp> {
   Widget _app(AppSettings settings, AppTheme theme) {
     return MaterialApp.router(
       routerConfig: ref.watch(routerProvider),
+      scrollBehavior: const MihomoteScrollBehavior(),
       onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
       // Brightness changes are animated by _ThemeTransition instead:
