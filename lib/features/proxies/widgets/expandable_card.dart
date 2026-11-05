@@ -7,10 +7,11 @@ import '../../../shared/widgets/reveal.dart';
 
 /// A card whose top area toggles a [body] that springs open below it.
 ///
-/// The header shows [title], a muted [subtitle], [actions] and a chevron.
-/// [details] stays under the header in both states; [summary] only while
-/// collapsed. Pass widgets built once per data change: the motion builder
-/// only re-clips them, so expanding never rebuilds a large body per frame.
+/// The header shows [title], a muted [subtitle], an optional [headerTrailing],
+/// [actions] and a chevron. [details] stays under the header in both states;
+/// [summary] only while collapsed. Pass widgets built once per data change:
+/// the motion builder only re-clips them, so expanding never rebuilds a large
+/// body per frame.
 class ExpandableCard extends StatelessWidget {
   const ExpandableCard({
     super.key,
@@ -20,6 +21,7 @@ class ExpandableCard extends StatelessWidget {
     required this.onToggle,
     required this.body,
     this.actions = const [],
+    this.headerTrailing,
     this.details,
     this.summary,
   });
@@ -30,6 +32,7 @@ class ExpandableCard extends StatelessWidget {
   final VoidCallback onToggle;
   final Widget body;
   final List<Widget> actions;
+  final Widget? headerTrailing;
   final Widget? details;
   final Widget? summary;
 
@@ -65,6 +68,7 @@ class ExpandableCard extends StatelessWidget {
               ],
             ),
           ),
+          ?headerTrailing,
           ...actions,
           AnimatedRotation(
             turns: expanded ? 0.5 : 0,

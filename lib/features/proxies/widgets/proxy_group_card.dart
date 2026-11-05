@@ -60,7 +60,8 @@ class ProxyGroupCard extends ConsumerWidget {
           onPressed: () => run(() => actions.testGroup(group.name)),
         ),
       ],
-      details: _Summary(state: state, group: group, traffic: traffic),
+      headerTrailing: _GroupTraffic(traffic: traffic),
+      summary: _Summary(state: state, group: group),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: MemberGrid(
@@ -84,17 +85,12 @@ class ProxyGroupCard extends ConsumerWidget {
   }
 }
 
-/// Current selection, live group traffic and latency.
+/// Collapsed body: the current selection and its latency.
 class _Summary extends StatelessWidget {
-  const _Summary({
-    required this.state,
-    required this.group,
-    required this.traffic,
-  });
+  const _Summary({required this.state, required this.group});
 
   final ProxiesState state;
   final ProxyNode group;
-  final ProxyGroupTraffic traffic;
 
   @override
   Widget build(BuildContext context) {
@@ -120,9 +116,7 @@ class _Summary extends StatelessWidget {
               style: theme.textTheme.bodyLarge,
             ),
           ),
-          const SizedBox(width: 8),
-          _GroupTraffic(traffic: traffic),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           DelayLabel(delay: state.delayOf(now, url: group.testUrl)),
         ],
       ),
