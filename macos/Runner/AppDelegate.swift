@@ -44,6 +44,7 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
   private var preferencesWorkItem: DispatchWorkItem?
   private var latestUp = 0
   private var latestDown = 0
+  private var hasStatusImage = false
   private var showTraffic: Bool {
     get { UserDefaults.standard.bool(forKey: Self.showTrafficKey) }
     set { UserDefaults.standard.set(newValue, forKey: Self.showTrafficKey) }
@@ -67,11 +68,13 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
 
   private func configureStatusItem() {
     guard let button = statusItem.button else { return }
-    button.image = NSImage(
+    let image = NSImage(
       systemSymbolName: "network",
       accessibilityDescription: "Mihomote"
     )
-    button.image?.isTemplate = true
+    image?.isTemplate = true
+    button.image = image
+    hasStatusImage = image != nil
     button.imagePosition = .imageLeading
     button.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
     button.toolTip = "Mihomote"
@@ -217,9 +220,21 @@ private final class MenuBarController: NSObject, NSPopoverDelegate {
 
   private func updateStatusTitle() {
     guard let button = statusItem.button else { return }
-    button.title = showTraffic
-      ? " ↑\(Self.formatSpeed(latestUp)) ↓\(Self.formatSpeed(latestDown))"
-      : ""
+    if showTraffic {
+      statusItem.length = NSStatusItem.variableLength
+      button.title = " ↑\(Self.formatSpeed(latestUp)) ↓\(Self.formatSpeed(latestDown))"
+    } else if hasStatusImage {
+      // A variable-length item with only an image can collapse to zero width
+      // on some macOS/menu-bar layouts. The standard square slot guarantees
+      // that the template icon remains visible.
+      statusItem.length = NSStatusItem.squareLength
+      button.title = ""
+    } else {
+      // SF Symbols should always contain `network` on the supported macOS
+      // versions, but keep the status item discoverable if loading fails.
+      statusItem.length = NSStatusItem.variableLength
+      button.title = "M"
+    }
   }
 
   private static func formatSpeed(_ bytesPerSecond: Int) -> String {
