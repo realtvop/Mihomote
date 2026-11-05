@@ -84,7 +84,6 @@
 - [x] 普通代理页和 macOS 菜单栏小窗右上角提供「强制全部刷新」，并行重取策略组与代理集；`Cmd/Ctrl+R` 在主应用和小窗全局触发同一动作，刷新期间合并重复触发
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步；首次启动在辅助菜单栏 engine 初始化后显式激活主窗口，确保首帧可获得键盘焦点
 - [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。菜单栏流量使用紧凑固定宽度和独立的原生双行内容视图，图标与上下行文字整体垂直居中，数值变化不会推动小窗位置；小窗或原生右键菜单打开时状态项保持系统高亮。网络连接和可变状态只由主 engine 的一套 provider 持有，原生通道向小窗转发代理、代理集、流量、连接数和操作中状态，并把小窗操作送回主 engine 的同一组 notifier，因此主界面与小窗的本地操作会双向同步且不会创建第二套 Mihomo 连接；共享设置变化仍会让小窗刷新主题和语言
-- [x] 应用图标设计：`assets/icon/mihomote.svg` 用默认靛蓝色与白色的 M 形连接线、端点组成简洁图标；同目录提供 1024 / 512 / 256 PNG、不透明正方形版本，以及基于 ImageMagick 7 的 `export.sh`。当前为设计资产，各平台启动图标接入和启动屏待完成
 - [x] GitHub Actions 构建：`.github/workflows/build.yml` 在 push 和手动触发时运行 analyze / test，并上传 Android APK、Windows x64 安装版和便携版、macOS app、未签名 iOS IPA、Linux x86_64 AppImage 和 Web WASM；Flutter 固定 3.47.7，安装器配置在 `windows/installer.iss`，AppImage 桌面文件在 `linux/packaging/`。首次云端运行与各平台安装验证待完成
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
@@ -103,7 +102,7 @@
 
 ### 路线图
 - **M4 打磨：** 键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
-- **M5 发布：** 各平台图标接入与启动屏、签名与发布流程、各平台打包验证
+- **M5 发布：** 图标与启动屏、签名与发布流程、各平台打包验证
 
 ### 已知问题 / 技术债
 - CI Android release APK 当前使用项目的调试密钥签名，macOS app 为临时签名且未公证，iOS IPA 未签名；这些构建尚非正式发布包。Linux AppImage 在 Ubuntu 22.04 上构建，跨发行版兼容性尚未验证。
@@ -228,7 +227,6 @@ lib/
 │                             # Reveal / SpringReveal（弹簧展开）
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
-assets/icon/                  # 应用图标 SVG、PNG 导出、export.sh 和设计说明（尚未接入平台启动图标）
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
 ```
 
@@ -375,7 +373,6 @@ flutter gen-l10n                      # 修改 ARB 后重新生成 lib/l10n/gen/
 dart format lib test                  # 提交前格式化
 flutter analyze                       # 必须 0 issue
 flutter test                          # 必须全部通过
-bash assets/icon/export.sh            # 从 SVG 重新导出图标 PNG（需要本机 ImageMagick 7）
 flutter run -d macos                  # 桌面调试（Debug 下可选「Mock 数据」后端）
 flutter run -d chrome --wasm          # Web（WASM）调试
 flutter run -d web-server --web-port=8686   # 浏览器预览（不支持 --wasm，见已知问题）；.claude/launch.json 中的 web-debug

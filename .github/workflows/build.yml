@@ -114,7 +114,7 @@ jobs:
           mkdir -p AppDir
           cp -a build/linux/x64/release/bundle/. AppDir/
           cp linux/packaging/mihomote.desktop AppDir/
-          cp assets/icon/mihomote-256.png AppDir/mihomote.png
+          cp web/icons/Icon-512.png AppDir/mihomote.png
           ln -s mihomote AppDir/AppRun
           curl -fL --retry 3 -o appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
           chmod +x appimagetool
