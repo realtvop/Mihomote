@@ -85,15 +85,16 @@
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步；首次启动在辅助菜单栏 engine 初始化后显式激活主窗口，确保首帧可获得键盘焦点
 - [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。菜单栏流量使用紧凑 72pt 固定宽度和基于 frame 的独立双行内容视图（避免 Auto Layout 导致宿主按钮高度塌陷为 1px 无法点击），图标靠左固定、上下行图标与数值之间保留空格，文字整体垂直居中，数值变化不会导致图标或小窗左右乱跑，状态栏按钮全区域可点击且支持点击与打开小窗时的高亮。网络连接和可变状态只由主 engine 的一套 provider 持有，原生通道向小窗转发代理、代理集、流量、连接数和操作中状态，并把小窗操作送回主 engine 的同一组 notifier，因此主界面与小窗的本地操作会双向同步且不会创建第二套 Mihomo 连接；共享设置变化仍会让小窗刷新主题和语言
 - [x] GitHub Actions 构建：`.github/workflows/build.yml` 在 push 和手动触发时运行 analyze / test，并上传 Android APK、Windows x64 安装版和便携版、macOS app、未签名 iOS IPA、Linux x86_64 AppImage 和 Web WASM；Flutter 固定 3.47.7，安装器配置在 `windows/installer.iss`，AppImage 桌面文件在 `linux/packaging/`。首次云端运行与各平台安装验证待完成
+- [x] 应用图标：`assets/icon/mihomote.svg` 是 1024 全出血母版，靛蓝底（默认种子色 `#4F5BD5`）上放一枚淡紫（`#E7E7FF`）选择器旋钮；旋钮轮廓就是欢迎页品牌标识用的 M3E `cookie9Sided`，指针缺口朝右上；文件只有底色矩形（`id="background"`）和一条镂空路径（`id="knob"`）。已接入全部平台，`bash assets/icon/export.sh` 从母版重新导出（只依赖 ImageMagick 7）：iOS 用不透明全出血图；macOS 用 824 圆角主体加 Big Sur 阴影；Android 为自适应图标，前景 `drawable/ic_launcher_foreground.xml` 由脚本从 SVG 生成，背景色 `#4F5BD5`，同一前景兼作 Android 13 单色主题图标，另保留 API 24–25 用的旧版 PNG；Web 的 any 图标和 favicon 用圆角方块，maskable 与 apple-touch-icon 用全出血图，manifest 主题色改为种子色；Windows ICO 含 16–256 七档，安装包也用它；Linux AppImage 沿用 `web/icons/Icon-512.png`。iOS / macOS 图标资源已用 `actool` 编译验证、无警告，尚未在设备上查看；未提供 iOS 18 深色 / 着色变体
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
-  - 编译通过：`flutter build web --wasm`、`flutter build macos --debug`（macOS 标题栏融合后）；iOS Debug 模拟器包（侧滑适配后，用临时 Debug scheme 执行 `xcodebuild`，保留原 Runner 的 Release 启动配置）
+  - 编译通过：`flutter build web --wasm`、`flutter build macos --debug`（macOS 标题栏融合后）、`flutter build apk --debug`（接入应用图标后）；iOS Debug 模拟器包（侧滑适配后，用临时 Debug scheme 执行 `xcodebuild`，保留原 Runner 的 Release 启动配置）
   - `flutter analyze` 无问题；`flutter test`：73 个测试全部通过。冒烟测试在窄屏 / 宽屏下分别打开连接详情（bottom sheet / side sheet）、后端菜单、日志筛选菜单、日志等级菜单（并选中一项）、后端编辑器（全屏 / 对话框）、三个确认框（模式切换还验证了取消不生效、确认后生效、切回规则不弹框）、代理集（展开并健康检查），并约束代理卡片透明点击层保持零海拔；滚动测试约束鼠标拖动不能滚动或下拉刷新，同时保留触摸拖动；macOS 窗口测试覆盖原生标题栏高度及首帧兜底；菜单栏小窗测试覆盖主 engine 状态快照、无独立后端时的代理页与连接统计、分组网速透传、强制全部刷新与其他操作回传、错误类型保留和打开主窗口桥接；快捷键测试覆盖 `Cmd/Ctrl+R`，代理状态测试覆盖强制刷新会同时重取策略组和代理集；深色切换测试检查过渡中途 Material 与 M3E 颜色一致；`test/features/proxies_state_test.dart` 还覆盖分组网速链路归集、代理集过滤、健康检查和更新
 
 ### 进行中 / 下一步
 - [ ] 连接真实的 Mihomo 内核联调（目前只用 mock 数据验证过）
-- [ ] 在 Android、Windows、Linux、macOS 上实际运行检查（目前实际运行过的只有 iOS 模拟器和 Web；macOS 只验证了编译）
+- [ ] 在 Android、Windows、Linux、macOS 上实际运行检查（目前实际运行过的只有 iOS 模拟器和 Web；macOS 和 Android 只验证了编译）
 - [ ] iOS 上 emoji 显示为方块（见已知问题）
 - [ ] 连接页：排序选项
 - [ ] 规则启停（`PATCH /rules/disable`）
@@ -102,7 +103,7 @@
 
 ### 路线图
 - **M4 打磨：** 键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
-- **M5 发布：** 图标与启动屏、签名与发布流程、各平台打包验证
+- **M5 发布：** 启动屏、签名与发布流程、各平台打包验证
 
 ### 已知问题 / 技术债
 - CI Android release APK 当前使用项目的调试密钥签名，macOS app 为临时签名且未公证，iOS IPA 未签名；这些构建尚非正式发布包。Linux AppImage 在 Ubuntu 22.04 上构建，跨发行版兼容性尚未验证。
@@ -227,6 +228,7 @@ lib/
 │                             # Reveal / SpringReveal（弹簧展开）
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
+assets/icon/                  # 应用图标母版 mihomote.svg 与导出脚本 export.sh
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
 ```
 
@@ -373,6 +375,7 @@ flutter gen-l10n                      # 修改 ARB 后重新生成 lib/l10n/gen/
 dart format lib test                  # 提交前格式化
 flutter analyze                       # 必须 0 issue
 flutter test                          # 必须全部通过
+bash assets/icon/export.sh            # 从 SVG 重新导出各平台图标（需要 ImageMagick 7）
 flutter run -d macos                  # 桌面调试（Debug 下可选「Mock 数据」后端）
 flutter run -d chrome --wasm          # Web（WASM）调试
 flutter run -d web-server --web-port=8686   # 浏览器预览（不支持 --wasm，见已知问题）；.claude/launch.json 中的 web-debug

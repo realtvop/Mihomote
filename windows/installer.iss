@@ -15,6 +15,8 @@ OutputDir=..\dist
 OutputBaseFilename=mihomote-windows-setup
 Compression=lzma2
 SolidCompression=yes
+SetupIconFile=runner\resources\app_icon.ico
+UninstallDisplayIcon={app}\mihomote.exe
 
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
