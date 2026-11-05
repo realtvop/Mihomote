@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Mihomote
+Comment=Remote control panel for Mihomo
+Exec=mihomote
+Icon=mihomote
+Categories=Network;
+Terminal=false
