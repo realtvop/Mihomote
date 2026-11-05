@@ -73,6 +73,12 @@ void main() {
         'value': const {'up': 2048, 'down': 4096},
       });
       shared.apply({'topic': 'connectionCount', 'value': 18});
+      shared.apply({
+        'topic': 'groupTraffic',
+        'value': {
+          mockSelect: {'down': 12 * 1024, 'up': 6 * 1024},
+        },
+      });
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
@@ -89,6 +95,8 @@ void main() {
       expect(find.text('Download'), findsOneWidget);
       expect(find.text('Connections'), findsOneWidget);
       expect(find.text(mockSelect), findsWidgets);
+      expect(find.text('12.0 KB/s'), findsOneWidget);
+      expect(find.text('6.00 KB/s'), findsOneWidget);
       expect(calls.any((call) => call.method == 'configure'), isTrue);
 
       final menuContainer = ProviderScope.containerOf(

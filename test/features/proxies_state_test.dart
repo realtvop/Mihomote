@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mihomote/core/backends/backends_providers.dart';
 import 'package:mihomote/core/mihomo/mock/mock_mihomo_api.dart';
+import 'package:mihomote/core/mihomo/models/connection.dart';
 import 'package:mihomote/features/proxies/proxies_providers.dart';
 
 ProviderContainer _container() {
@@ -13,6 +14,72 @@ ProviderContainer _container() {
 }
 
 void main() {
+  test('group traffic sums every connection across nested proxy chains', () {
+    Connection connection({
+      required String id,
+      required int down,
+      required int up,
+      required List<String> chains,
+    }) => Connection(
+      id: id,
+      metadata: const ConnectionMetadata(),
+      download: down,
+      upload: up,
+      chains: chains,
+    );
+
+    final previous = ConnectionsSnapshot(
+      connections: [
+        connection(
+          id: 'one',
+          down: 1000,
+          up: 200,
+          chains: const ['Node A', 'Auto', 'Select'],
+        ),
+        connection(
+          id: 'two',
+          down: 400,
+          up: 100,
+          chains: const ['Node B', 'Select'],
+        ),
+      ],
+    );
+    final current = ConnectionsSnapshot(
+      connections: [
+        connection(
+          id: 'one',
+          down: 5000,
+          up: 1000,
+          chains: const ['Node A', 'Auto', 'Select'],
+        ),
+        connection(
+          id: 'two',
+          down: 2400,
+          up: 500,
+          chains: const ['Node B', 'Select'],
+        ),
+        connection(
+          id: 'new',
+          down: 9999,
+          up: 9999,
+          chains: const ['Node C', 'Select'],
+        ),
+      ],
+    );
+
+    final traffic = calculateProxyGroupTraffic(
+      previous: previous,
+      current: current,
+      elapsed: const Duration(seconds: 2),
+    );
+
+    expect(traffic['Auto']?.down, 2000);
+    expect(traffic['Auto']?.up, 400);
+    expect(traffic['Select']?.down, 3000);
+    expect(traffic['Select']?.up, 600);
+    expect(traffic['Node C'], isNull);
+  });
+
   test('groups follow GLOBAL order, GLOBAL first, nodes excluded', () async {
     final api = MockMihomoApi();
     final state = ProxiesState.from(await api.proxies());

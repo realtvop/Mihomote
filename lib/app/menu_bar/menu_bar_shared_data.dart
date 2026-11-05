@@ -15,6 +15,7 @@ class MenuBarSharedState {
     this.globalMode = false,
     this.traffic,
     this.connectionCount,
+    this.groupTraffic = const {},
     this.delayTesting = const {},
     this.updatingProviders = const {},
     this.checkingProviders = const {},
@@ -25,6 +26,7 @@ class MenuBarSharedState {
   final bool globalMode;
   final TrafficSample? traffic;
   final int? connectionCount;
+  final Map<String, ProxyGroupTraffic> groupTraffic;
   final Set<String> delayTesting;
   final Set<String> updatingProviders;
   final Set<String> checkingProviders;
@@ -35,6 +37,7 @@ class MenuBarSharedState {
     bool? globalMode,
     Object? traffic = _unset,
     Object? connectionCount = _unset,
+    Map<String, ProxyGroupTraffic>? groupTraffic,
     Set<String>? delayTesting,
     Set<String>? updatingProviders,
     Set<String>? checkingProviders,
@@ -48,6 +51,7 @@ class MenuBarSharedState {
     connectionCount: identical(connectionCount, _unset)
         ? this.connectionCount
         : connectionCount as int?,
+    groupTraffic: groupTraffic ?? this.groupTraffic,
     delayTesting: delayTesting ?? this.delayTesting,
     updatingProviders: updatingProviders ?? this.updatingProviders,
     checkingProviders: checkingProviders ?? this.checkingProviders,
@@ -83,6 +87,15 @@ class MenuBarSharedStateNotifier extends Notifier<MenuBarSharedState> {
       ),
       'connectionCount' => state.copyWith(
         connectionCount: readIntOrNull(value),
+      ),
+      'groupTraffic' => state.copyWith(
+        groupTraffic: {
+          for (final entry in readMap(value).entries)
+            entry.key: ProxyGroupTraffic(
+              down: readInt(readMap(entry.value)['down']),
+              up: readInt(readMap(entry.value)['up']),
+            ),
+        },
       ),
       'delayTesting' => state.copyWith(delayTesting: _decodeNames(value)),
       'updatingProviders' => state.copyWith(
@@ -140,6 +153,11 @@ class MenuBarProxyScope extends StatelessWidget {
       checkingProxyProvidersViewProvider.overrideWith(
         (ref) => ref.watch(
           menuBarSharedStateProvider.select((state) => state.checkingProviders),
+        ),
+      ),
+      proxyGroupTrafficViewProvider.overrideWith(
+        (ref) => ref.watch(
+          menuBarSharedStateProvider.select((state) => state.groupTraffic),
         ),
       ),
       proxyActionsProvider.overrideWith((ref) => _menuBarProxyActions),

@@ -115,6 +115,7 @@ class _MenuBarDataHostState extends ConsumerState<MenuBarDataHost> {
     final config = ref.watch(coreConfigProvider);
     final traffic = ref.watch(trafficProvider);
     final connections = ref.watch(connectionsStreamProvider);
+    final groupTraffic = ref.watch(proxyGroupTrafficProvider);
     final delayTesting = ref.watch(delayTestingProvider);
     final updatingProviders = ref.watch(updatingProxyProvidersProvider);
     final checkingProviders = ref.watch(checkingProxyProvidersProvider);
@@ -146,6 +147,10 @@ class _MenuBarDataHostState extends ConsumerState<MenuBarDataHost> {
     );
     final connectionCount = connections.value?.connections.length;
     _queue('connectionCount', connectionCount, connectionCount);
+    _queue('groupTraffic', groupTraffic, {
+      for (final entry in groupTraffic.entries)
+        entry.key: {'down': entry.value.down, 'up': entry.value.up},
+    });
     _queue('delayTesting', delayTesting, delayTesting.toList(growable: false));
     _queue(
       'updatingProviders',

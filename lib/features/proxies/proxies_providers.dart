@@ -1,9 +1,101 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/backends/backends_providers.dart';
 import '../../core/mihomo/mihomo_api.dart';
 import '../../core/state/core_providers.dart';
+
+@immutable
+class ProxyGroupTraffic {
+  const ProxyGroupTraffic({this.down = 0, this.up = 0});
+
+  final int down;
+  final int up;
+
+  ProxyGroupTraffic add({required int down, required int up}) =>
+      ProxyGroupTraffic(down: this.down + down, up: this.up + up);
+}
+
+/// Calculates current traffic for every name in the active proxy chains.
+///
+/// A nested connection contributes to each group it traverses. A connection
+/// that did not exist in [previous] contributes zero because its earlier byte
+/// totals are unknown.
+@visibleForTesting
+Map<String, ProxyGroupTraffic> calculateProxyGroupTraffic({
+  required ConnectionsSnapshot previous,
+  required ConnectionsSnapshot current,
+  required Duration elapsed,
+}) {
+  final before = {for (final c in previous.connections) c.id: c};
+  final seconds = math.max(0.25, elapsed.inMilliseconds / 1000);
+  int rate(int value, int oldValue) =>
+      (math.max(0, value - oldValue) / seconds).round();
+  final result = <String, ProxyGroupTraffic>{};
+
+  for (final connection in current.connections) {
+    final old = before[connection.id];
+    if (old == null) continue;
+    final down = rate(connection.download, old.download);
+    final up = rate(connection.upload, old.upload);
+    for (final name in connection.chains.toSet()) {
+      result[name] = (result[name] ?? const ProxyGroupTraffic()).add(
+        down: down,
+        up: up,
+      );
+    }
+  }
+  return result;
+}
+
+class ProxyGroupTrafficNotifier
+    extends Notifier<Map<String, ProxyGroupTraffic>> {
+  ConnectionsSnapshot? _previous;
+  DateTime? _previousAt;
+
+  @override
+  Map<String, ProxyGroupTraffic> build() {
+    ref.watch(mihomoApiProvider);
+    _previous = null;
+    _previousAt = null;
+    ref.listen(connectionsStreamProvider, (_, next) {
+      if (next.hasError) {
+        state = const {};
+        _previous = null;
+        _previousAt = null;
+        return;
+      }
+      final snapshot = next.value;
+      if (snapshot == null) return;
+      final now = DateTime.now();
+      final previous = _previous;
+      final previousAt = _previousAt;
+      state = previous == null || previousAt == null
+          ? const {}
+          : calculateProxyGroupTraffic(
+              previous: previous,
+              current: snapshot,
+              elapsed: now.difference(previousAt),
+            );
+      _previous = snapshot;
+      _previousAt = now;
+    });
+
+    final initial = ref.read(connectionsStreamProvider).value;
+    if (initial != null) {
+      _previous = initial;
+      _previousAt = DateTime.now();
+    }
+    return const {};
+  }
+}
+
+final proxyGroupTrafficProvider =
+    NotifierProvider<ProxyGroupTrafficNotifier, Map<String, ProxyGroupTraffic>>(
+      ProxyGroupTrafficNotifier.new,
+    );
 
 @immutable
 class ProxiesState {
@@ -238,6 +330,10 @@ final updatingProxyProvidersViewProvider = Provider<Set<String>>(
 
 final checkingProxyProvidersViewProvider = Provider<Set<String>>(
   (ref) => ref.watch(checkingProxyProvidersProvider),
+);
+
+final proxyGroupTrafficViewProvider = Provider<Map<String, ProxyGroupTraffic>>(
+  (ref) => ref.watch(proxyGroupTrafficProvider),
 );
 
 class ProxyActions {
