@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../core/settings/app_settings.dart';
 import '../shared/l10n.dart';
+import 'macos_window_chrome.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 import 'theme/seed_colors.dart';
@@ -75,7 +76,9 @@ class _MihomoteAppState extends ConsumerState<MihomoteApp> {
       builder: (context, child) => _ThemeTransition(
         theme: theme,
         brightness: Theme.of(context).brightness,
-        child: _SystemBarsStyle(child: child ?? const SizedBox.shrink()),
+        child: MacosWindowChrome(
+          child: _SystemBarsStyle(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }
