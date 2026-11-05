@@ -81,6 +81,7 @@
 - [x] 应用级滚动策略禁止鼠标拖动页面（包括 M3E 下拉刷新内部覆盖的滚动配置），保留触屏拖动、触控板与鼠标滚轮滚动；widget 测试覆盖鼠标不能滚动 / 刷新且触摸仍可滚动
 - [x] macOS 原生标题栏与界面融合：`MainFlutterWindow.swift` 使用透明、无标题、无分隔线的全尺寸内容标题栏；`lib/app/macos_window_chrome.dart` 将原生窗口动态上报的标题栏高度注入 `MediaQuery`，避免红黄绿窗口按钮遮挡页面内容，并在全屏切换时同步
 - [x] macOS 菜单栏入口：`AppDelegate.swift` 创建原生 `NSStatusItem`，左键打开由独立 Flutter engine 承载的代理小窗，右键原生菜单可切换菜单栏实时上下行、打开主窗口或退出；小窗复用 `ProxiesPage`，顶部显示上下行和活动连接数，右上角可快速打开主窗口。主窗口关闭后菜单栏入口继续运行，共享设置或当前后端变化时会重载小窗 provider
+- [x] 应用图标设计：`assets/icon/mihomote.svg` 用默认靛蓝色与白色的 M 形连接线、端点组成简洁图标；同目录提供 1024 / 512 / 256 PNG、不透明正方形版本，以及基于 ImageMagick 7 的 `export.sh`。当前为设计资产，各平台启动图标接入和启动屏待完成
 - [x] **验证**（mock 数据）：
   - Web（Debug，DDC）：窄屏和宽屏，浅色和深色（UI 改版后复查过；改为全 M3E 组件后按用户要求跳过截图复查，由下面的 widget 测试覆盖）
   - iOS 26.3 模拟器（Aonsoku Dev）：主要页面、设置、深色模式、后端菜单；UI 改版后复查了概览、代理（含展开）、连接列表、规则、设置、深色概览（连接详情改由 widget 测试覆盖，iOS 上未复查）
@@ -98,7 +99,7 @@
 
 ### 路线图
 - **M4 打磨：** 键盘快捷键、右键菜单、列表-详情双栏、动效细节、无障碍、Web 作为 `external-ui` 部署时自动识别同源后端
-- **M5 发布：** 图标与启动屏、各平台打包、CI（analyze / test / `build web --wasm`）
+- **M5 发布：** 各平台图标接入与启动屏、各平台打包、CI（analyze / test / `build web --wasm`）
 
 ### 已知问题 / 技术债
 - secret 以明文存在 SharedPreferences 里（Web 上就是 localStorage）。之后评估 `flutter_secure_storage`，需要注意 macOS 钥匙串 entitlement 以及 Web/WASM 的兼容性。
@@ -222,6 +223,7 @@ lib/
 │                             # Reveal / SpringReveal（弹簧展开）
 └── l10n/                     # app_en.arb（模板）、app_zh.arb；gen/ 为生成代码（勿手改）
 assets/fonts/                 # GoogleSansFlex.ttf（裁剪后的可变字体）及其 OFL 许可证
+assets/icon/                  # 应用图标 SVG、PNG 导出、export.sh 和设计说明（尚未接入平台启动图标）
 test/                         # 单元测试 / widget 测试（目录结构与 lib/ 对应）
 ```
 
@@ -368,6 +370,7 @@ flutter gen-l10n                      # 修改 ARB 后重新生成 lib/l10n/gen/
 dart format lib test                  # 提交前格式化
 flutter analyze                       # 必须 0 issue
 flutter test                          # 必须全部通过
+bash assets/icon/export.sh            # 从 SVG 重新导出图标 PNG（需要本机 ImageMagick 7）
 flutter run -d macos                  # 桌面调试（Debug 下可选「Mock 数据」后端）
 flutter run -d chrome --wasm          # Web（WASM）调试
 flutter run -d web-server --web-port=8686   # 浏览器预览（不支持 --wasm，见已知问题）；.claude/launch.json 中的 web-debug
