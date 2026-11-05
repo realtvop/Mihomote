@@ -158,17 +158,9 @@ class _MenuBarProxiesSurfaceState
         unawaited(MenuBarBridge.publishTraffic(sample));
       }
     });
-    final l10n = context.l10n;
     return ProxiesPage(
       showShellActions: false,
-      actions: [
-        M3EIconButton(
-          icon: const Icon(Icons.open_in_new_rounded),
-          variant: M3EIconButtonVariant.standard,
-          tooltip: l10n.menuBarOpenMainWindow,
-          onPressed: () => unawaited(MenuBarBridge.openMainWindow()),
-        ),
-      ],
+      showPageHeader: false,
       header: const _LiveSummary(),
     );
   }
@@ -183,7 +175,7 @@ class _LiveSummary extends ConsumerWidget {
     final traffic = ref.watch(trafficProvider).value;
     final connections = ref.watch(connectionsStreamProvider).value;
     return Padding(
-      padding: pageGutter(context).copyWith(top: 4, bottom: 8),
+      padding: pageGutter(context).copyWith(top: 12, bottom: 8),
       child: M3ECard(
         variant: M3ECardVariant.filled,
         color: Theme.of(context).colorScheme.card,
@@ -207,6 +199,12 @@ class _LiveSummary extends ConsumerWidget {
                 label: l10n.overviewConnections,
                 value: connections?.connections.length.toString() ?? '—',
               ),
+            ),
+            M3EIconButton(
+              icon: const Icon(Icons.open_in_new_rounded),
+              variant: M3EIconButtonVariant.standard,
+              tooltip: l10n.menuBarOpenMainWindow,
+              onPressed: () => unawaited(MenuBarBridge.openMainWindow()),
             ),
           ],
         ),

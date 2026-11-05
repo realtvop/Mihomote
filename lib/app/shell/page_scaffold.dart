@@ -23,6 +23,7 @@ class PageScaffold extends StatelessWidget {
     this.onRefresh,
     this.controller,
     this.showShellActions = true,
+    this.showAppBar = true,
   });
 
   final String title;
@@ -33,6 +34,7 @@ class PageScaffold extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final ScrollController? controller;
   final bool showShellActions;
+  final bool showAppBar;
 
   @override
   Widget build(BuildContext context) {
@@ -44,37 +46,38 @@ class PageScaffold extends StatelessWidget {
     Widget scrollView = CustomScrollView(
       controller: controller,
       slivers: [
-        M3EAppBar.sliver(
-          titleText: title,
-          subtitleText: subtitle,
-          // Long titles must not wrap: the flexible bars have a fixed height.
-          // The large title only gets wide windows; phones (and big text
-          // scales on them) use the medium one.
-          variant: compact
-              ? M3EAppBarVariant.mediumFlexible
-              : M3EAppBarVariant.largeFlexible,
-          backgroundColor: Theme.of(context).colorScheme.canvas,
-          leading: leaveSettings == null
-              ? null
-              : M3EIconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
+        if (showAppBar)
+          M3EAppBar.sliver(
+            titleText: title,
+            subtitleText: subtitle,
+            // Long titles must not wrap: the flexible bars have a fixed height.
+            // The large title only gets wide windows; phones (and big text
+            // scales on them) use the medium one.
+            variant: compact
+                ? M3EAppBarVariant.mediumFlexible
+                : M3EAppBarVariant.largeFlexible,
+            backgroundColor: Theme.of(context).colorScheme.canvas,
+            leading: leaveSettings == null
+                ? null
+                : M3EIconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    variant: M3EIconButtonVariant.standard,
+                    tooltip: l10n.actionBack,
+                    onPressed: leaveSettings,
+                  ),
+            actions: [
+              ...actions,
+              if (compact && showShellActions) ...[
+                const BackendSwitcher(),
+                M3EIconButton(
+                  icon: const Icon(Icons.settings_outlined),
                   variant: M3EIconButtonVariant.standard,
-                  tooltip: l10n.actionBack,
-                  onPressed: leaveSettings,
+                  tooltip: l10n.navSettings,
+                  onPressed: shell?.openSettings,
                 ),
-          actions: [
-            ...actions,
-            if (compact && showShellActions) ...[
-              const BackendSwitcher(),
-              M3EIconButton(
-                icon: const Icon(Icons.settings_outlined),
-                variant: M3EIconButtonVariant.standard,
-                tooltip: l10n.navSettings,
-                onPressed: shell?.openSettings,
-              ),
+              ],
             ],
-          ],
-        ),
+          ),
         ...slivers,
         const SliverSafeArea(
           top: false,

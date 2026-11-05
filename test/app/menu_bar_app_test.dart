@@ -53,7 +53,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(ErrorWidget), findsNothing);
-    expect(find.text('Proxies'), findsOneWidget);
+    expect(find.text('Proxies'), findsNothing);
     expect(find.text('Upload'), findsOneWidget);
     expect(find.text('Download'), findsOneWidget);
     expect(find.text('Connections'), findsOneWidget);

@@ -22,6 +22,7 @@ class ProxiesPage extends ConsumerStatefulWidget {
     this.header,
     this.actions = const [],
     this.showShellActions = true,
+    this.showPageHeader = true,
   });
 
   /// Optional content between the page bar and the proxies tabs. The macOS
@@ -30,6 +31,7 @@ class ProxiesPage extends ConsumerStatefulWidget {
   final Widget? header;
   final List<Widget> actions;
   final bool showShellActions;
+  final bool showPageHeader;
 
   @override
   ConsumerState<ProxiesPage> createState() => _ProxiesPageState();
@@ -67,6 +69,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       },
       actions: widget.actions,
       showShellActions: widget.showShellActions,
+      showAppBar: widget.showPageHeader,
       slivers: [
         if (widget.header case final header?) SliverToBoxAdapter(child: header),
         SliverToBoxAdapter(
