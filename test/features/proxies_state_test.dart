@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:mihomote/core/backends/backends_providers.dart';
 import 'package:mihomote/core/mihomo/mock/mock_mihomo_api.dart';
 import 'package:mihomote/core/mihomo/models/connection.dart';
+import 'package:mihomote/core/mihomo/models/proxy.dart';
+import 'package:mihomote/core/mihomo/models/rule.dart';
 import 'package:mihomote/features/proxies/proxies_providers.dart';
+import 'package:mihomote/features/proxies/proxy_refresh_shortcut.dart';
 
 ProviderContainer _container() {
   final container = ProviderContainer(
@@ -13,7 +18,82 @@ ProviderContainer _container() {
   return container;
 }
 
+class _CountingMockMihomoApi extends MockMihomoApi {
+  var proxyLoads = 0;
+  var providerLoads = 0;
+
+  @override
+  Future<Map<String, ProxyNode>> proxies() {
+    proxyLoads++;
+    return super.proxies();
+  }
+
+  @override
+  Future<List<ProxyProvider>> proxyProviders() {
+    providerLoads++;
+    return super.proxyProviders();
+  }
+}
+
 void main() {
+  testWidgets('Command-R and Control-R force-refresh all proxy data', (
+    tester,
+  ) async {
+    var refreshes = 0;
+    Future<void> noOp() async {}
+    final actions = ProxyActions(
+      reloadAll: () async {
+        refreshes++;
+      },
+      reloadGroups: noOp,
+      reloadProviders: noOp,
+      select: (_, _) => noOp(),
+      testGroup: (_) => noOp(),
+      testNode: (_, {url}) => noOp(),
+      updateProvider: (_) => noOp(),
+      healthCheckProvider: (_) => noOp(),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [proxyActionsProvider.overrideWithValue(actions)],
+        child: const MaterialApp(
+          home: ProxyRefreshShortcutScope(
+            child: Focus(autofocus: true, child: SizedBox()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pump();
+
+    expect(refreshes, 2);
+  });
+
+  test('forced refresh reloads both proxy groups and providers', () async {
+    final api = _CountingMockMihomoApi();
+    final container = ProviderContainer(
+      overrides: [mihomoApiProvider.overrideWithValue(api)],
+    );
+    addTearDown(container.dispose);
+    await Future.wait([
+      container.read(proxiesProvider.future),
+      container.read(proxyProvidersProvider.future),
+    ]);
+
+    await container.read(proxyRefreshProvider.notifier).refresh();
+
+    expect(api.proxyLoads, 2);
+    expect(api.providerLoads, 2);
+  });
+
   test('group traffic sums every connection across nested proxy chains', () {
     Connection connection({
       required String id,

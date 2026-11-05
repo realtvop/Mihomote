@@ -4,6 +4,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/settings/app_settings.dart';
+import '../features/proxies/proxy_refresh_shortcut.dart';
 import '../shared/l10n.dart';
 import 'macos_window_chrome.dart';
 import 'router.dart';
@@ -79,7 +80,11 @@ class _MihomoteAppState extends ConsumerState<MihomoteApp> {
         theme: theme,
         brightness: Theme.of(context).brightness,
         child: MacosWindowChrome(
-          child: _SystemBarsStyle(child: child ?? const SizedBox.shrink()),
+          child: _SystemBarsStyle(
+            child: ProxyRefreshShortcutScope(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         ),
       ),
     );

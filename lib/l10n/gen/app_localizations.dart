@@ -554,6 +554,12 @@ abstract class AppLocalizations {
   /// **'Test latency'**
   String get proxiesTestLatency;
 
+  /// No description provided for @proxiesRefreshAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Force refresh all'**
+  String get proxiesRefreshAll;
+
   /// No description provided for @proxiesNodeCount.
   ///
   /// In en, this message translates to:

@@ -87,6 +87,7 @@
   "actionUpdateGeo": "更新 GEO 数据库",
 
   "proxiesTestLatency": "测试延迟",
+  "proxiesRefreshAll": "强制全部刷新",
   "proxiesNodeCount": "{count} 个节点",
   "proxiesTimeout": "超时",
   "proxiesEmpty": "没有策略组",

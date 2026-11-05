@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../features/proxies/proxies_page.dart';
+import '../../features/proxies/proxy_refresh_shortcut.dart';
+import '../../features/proxies/widgets/proxy_refresh_button.dart';
 import '../../shared/l10n.dart';
 import '../../shared/layout/page_padding.dart';
 import '../../shared/utils/format.dart';
@@ -111,7 +113,7 @@ class _MenuBarAppState extends ConsumerState<MenuBarApp> {
       ],
       builder: (context, child) => M3EResolvedTheme(
         data: theme.of(Theme.of(context).brightness),
-        child: child!,
+        child: ProxyRefreshShortcutScope(child: child!),
       ),
       home: const _MenuBarProxiesSurface(),
     );
@@ -188,6 +190,7 @@ class _LiveSummary extends ConsumerWidget {
                 value: shared.connectionCount?.toString() ?? '—',
               ),
             ),
+            const ProxyRefreshButton(),
             M3EIconButton(
               icon: const Icon(Icons.open_in_new_rounded),
               variant: M3EIconButtonVariant.standard,

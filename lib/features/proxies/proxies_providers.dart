@@ -338,6 +338,7 @@ final proxyGroupTrafficViewProvider = Provider<Map<String, ProxyGroupTraffic>>(
 
 class ProxyActions {
   const ProxyActions({
+    required this.reloadAll,
     required this.reloadGroups,
     required this.reloadProviders,
     required this.select,
@@ -347,6 +348,7 @@ class ProxyActions {
     required this.healthCheckProvider,
   });
 
+  final Future<void> Function() reloadAll;
   final Future<void> Function() reloadGroups;
   final Future<void> Function() reloadProviders;
   final Future<void> Function(String group, String name) select;
@@ -358,6 +360,10 @@ class ProxyActions {
 
 final proxyActionsProvider = Provider<ProxyActions>(
   (ref) => ProxyActions(
+    reloadAll: () => Future.wait([
+      ref.read(proxiesProvider.notifier).reload(),
+      ref.read(proxyProvidersProvider.notifier).reload(),
+    ]),
     reloadGroups: () => ref.read(proxiesProvider.notifier).reload(),
     reloadProviders: () => ref.read(proxyProvidersProvider.notifier).reload(),
     select: (group, name) =>
@@ -370,6 +376,32 @@ final proxyActionsProvider = Provider<ProxyActions>(
     healthCheckProvider: (name) =>
         ref.read(proxyProvidersProvider.notifier).healthCheck(name),
   ),
+);
+
+/// Serializes forced proxy refreshes triggered by buttons or shortcuts.
+class ProxyRefreshNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    // Keeps this coordinator inside the menu-bar ProviderScope, where the
+    // actions are overridden to cross the secondary-engine bridge.
+    ref.watch(proxyActionsProvider);
+    return false;
+  }
+
+  Future<void> refresh() async {
+    if (state) return;
+    state = true;
+    try {
+      await ref.read(proxyActionsProvider).reloadAll();
+    } finally {
+      state = false;
+    }
+  }
+}
+
+final proxyRefreshProvider = NotifierProvider<ProxyRefreshNotifier, bool>(
+  ProxyRefreshNotifier.new,
+  dependencies: [proxyActionsProvider],
 );
 
 /// Which cards are expanded, kept across tab switches.

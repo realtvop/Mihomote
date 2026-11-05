@@ -167,6 +167,7 @@ class MenuBarProxyScope extends StatelessWidget {
 }
 
 final _menuBarProxyActions = ProxyActions(
+  reloadAll: () => MenuBarBridge.hostCall('reloadAll'),
   reloadGroups: () => MenuBarBridge.hostCall('reloadGroups'),
   reloadProviders: () => MenuBarBridge.hostCall('reloadProviders'),
   select: (group, name) =>

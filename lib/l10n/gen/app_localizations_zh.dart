@@ -247,6 +247,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get proxiesTestLatency => '测试延迟';
 
   @override
+  String get proxiesRefreshAll => '强制全部刷新';
+
+  @override
   String proxiesNodeCount(int count) {
     return '$count 个节点';
   }

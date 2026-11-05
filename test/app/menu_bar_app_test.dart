@@ -99,6 +99,11 @@ void main() {
       expect(find.text('6.00 KB/s'), findsOneWidget);
       expect(calls.any((call) => call.method == 'configure'), isTrue);
 
+      await tester.tap(find.byIcon(Icons.refresh_rounded));
+      await tester.pump(const Duration(milliseconds: 100));
+      final reloadCall = calls.lastWhere((call) => call.method == 'hostCall');
+      expect(reloadCall.arguments, {'method': 'reloadAll', 'arguments': {}});
+
       final menuContainer = ProviderScope.containerOf(
         tester.element(find.byType(ProxiesPage)),
       );

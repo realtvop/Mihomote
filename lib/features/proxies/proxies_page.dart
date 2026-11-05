@@ -11,6 +11,7 @@ import '../../shared/widgets/status_views.dart';
 import 'proxies_providers.dart';
 import 'widgets/proxy_group_card.dart';
 import 'widgets/proxy_provider_card.dart';
+import 'widgets/proxy_refresh_button.dart';
 
 enum _ProxiesTab { groups, providers }
 
@@ -63,7 +64,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         _ProxiesTab.groups => actions.reloadGroups(),
         _ProxiesTab.providers => actions.reloadProviders(),
       },
-      actions: widget.actions,
+      actions: [const ProxyRefreshButton(), ...widget.actions],
       showShellActions: widget.showShellActions,
       showAppBar: widget.showPageHeader,
       slivers: [

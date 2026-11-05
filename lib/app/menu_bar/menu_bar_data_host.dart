@@ -52,6 +52,9 @@ class _MenuBarDataHostState extends ConsumerState<MenuBarDataHost> {
     final arguments = readMap(request['arguments']);
     try {
       switch (readString(request['method'])) {
+        case 'reloadAll':
+          await ref.read(proxyRefreshProvider.notifier).refresh();
+          break;
         case 'reloadGroups':
           await ref.read(proxiesProvider.notifier).reload();
           break;

@@ -92,6 +92,7 @@
   "actionUpdateGeo": "Update GEO databases",
 
   "proxiesTestLatency": "Test latency",
+  "proxiesRefreshAll": "Force refresh all",
   "proxiesNodeCount": "{count, plural, =1{1 node} other{{count} nodes}}",
   "@proxiesNodeCount": {"placeholders": {"count": {"type": "int"}}},
   "proxiesTimeout": "Timeout",

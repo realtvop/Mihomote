@@ -251,6 +251,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proxiesTestLatency => 'Test latency';
 
   @override
+  String get proxiesRefreshAll => 'Force refresh all';
+
+  @override
   String proxiesNodeCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
